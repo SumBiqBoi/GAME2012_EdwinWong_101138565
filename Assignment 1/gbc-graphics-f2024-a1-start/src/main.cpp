@@ -128,7 +128,7 @@ int main(void)
             glUseProgram(shaderUniformColor);
             glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
             glUniform3f(u_color, 0.0f, 0.0f, 1.0f);
-            glUniform1f(u_intensity, sin(time));
+            glUniform1f(u_intensity, sin(time) * 0.5f + 0.5f);
             glDrawArrays(GL_TRIANGLES, 0, 3);
             break;
 
