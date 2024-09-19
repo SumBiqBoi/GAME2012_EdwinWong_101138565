@@ -116,10 +116,10 @@ int main(void)
         // Hint: Switch the shader to colour based on vertex positions
         // If you get errors in the console, comment out all unused uniforms
         case 2:
-            glUseProgram(shaderUniformColor);
-            glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
-            glUniform3f(u_color, 0.0f, 1.0f, 0.0f);
-            glUniform1f(u_intensity, 1.0f);
+            glUseProgram(shaderVertexColor);
+            //glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
+            //glUniform3f(u_color, 0.0f, 1.0f, 0.0f);
+            //glUniform1f(u_intensity, 1.0f);
             glDrawArrays(GL_TRIANGLES, 0, 3);
             break;
 
