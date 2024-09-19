@@ -134,6 +134,7 @@ int main(void)
 
         // Hint: Use the Translate function
         case 4:
+            world = Translate(sinf(time), 0, 0);
             glUseProgram(shaderUniformColor);
             glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
             glUniform3f(u_color, 1.0f, 0.0f, 1.0f);
