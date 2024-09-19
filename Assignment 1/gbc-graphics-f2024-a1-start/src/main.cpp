@@ -108,7 +108,7 @@ int main(void)
         case 1:
             glUseProgram(shaderUniformColor);
             glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
-            glUniform3f(u_color, 1.0f, 0.0f, 0.0f);
+            glUniform3f(u_color, 1.0f, 1.0f, 1.0f);
             glUniform1f(u_intensity, 1.0f);
             glDrawArrays(GL_TRIANGLES, 0, 3);
             break;
