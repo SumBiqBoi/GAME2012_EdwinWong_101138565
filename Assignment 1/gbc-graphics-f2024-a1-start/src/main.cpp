@@ -144,7 +144,7 @@ int main(void)
 
         // Hint: Use the RotateZ function
         case 5:
-            world = RotateZ(sinf(time));
+            world = RotateZ(100 * time * DEG2RAD);
             glUseProgram(shaderUniformColor);
             glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
             glUniform3f(u_color, 0.0f, 1.0f, 1.0f);
