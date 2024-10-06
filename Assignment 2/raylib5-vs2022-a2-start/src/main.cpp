@@ -2,7 +2,7 @@
 #include "Math.h"
 
 // Effectively GL_LINE_LOOP
-void DrawLineLoop(Vector2* points, int pointCount, Color color, int revAmount)
+void DrawLineLoop(Vector2* points, int pointCount, Color color)
 {
     float thickness = 10.0f;
     for (int i = 0; i < pointCount; i++)
@@ -18,25 +18,35 @@ void DrawLineLoop(Vector2* points, int pointCount, Color color, int revAmount)
 
 void DrawLineLoopAuto(Vector2* points, int pointCount, Color color, int createAmount)
 {
-    float thickness = 5.0f;
+    float thickness = 7.0f;
+    Vector2 currentLayer[4];
+
+    for (int i = 0; i < pointCount; i++) 
+    {
+        currentLayer[i] = points[i];
+    }
+
     for (int k = 0; k < createAmount; k++)
     {
+        Vector2 nextLayer[4];
+
         for (int i = 0; i < pointCount; i++)
         {
             int curr = i;
             int next = (i + 1) % pointCount;
-            Vector2 A = points[curr];
-            Vector2 B = points[next];
+            Vector2 A = currentLayer[curr];
+            Vector2 B = currentLayer[next];
+
             DrawLineEx(A, B, thickness, color);
-            for (int l = 0; l < pointCount; l++)
-            {
-                Vector2 C = (points[curr] + points[next]) * 0.5f;
-                Vector2 D = (points[next] + points[next + 1]) * 0.5f;
-                DrawLineEx(C, D, thickness, color);
-            }
+
+            nextLayer[curr] = (currentLayer[curr] + currentLayer[next]) * 0.5f;
+        }
+        for (int i = 0; i < pointCount; i++) 
+        {
+            currentLayer[i] = nextLayer[i];
         }
     }
-}
+} 
 
 int main()
 {
@@ -75,10 +85,10 @@ int main()
     {
         BeginDrawing();
         ClearBackground(BLACK);
-        DrawText("Hello World!", 10, 10, 20, GRAY);
-        //DrawLineLoop(curr, 4, VIOLET, 1);
+        DrawText("", 10, 10, 20, GRAY);
+        //DrawLineLoop(curr, 4, VIOLET);
         //DrawLineLoop(next, 4, LIME);
-        DrawLineLoopAuto(curr, 4, VIOLET, 5);
+        DrawLineLoopAuto(curr, 4, VIOLET, 10);
         EndDrawing();
     }
 
