@@ -16,11 +16,10 @@ void DrawLineLoop(Vector2* points, int pointCount, Color color)
     }
 }
 
-void DrawLineLoopAuto(Vector2* points, int pointCount, Color color, int createAmount)
+void DrawLineLoopAuto(Vector2* points, int pointCount, int createAmount)
 {
     float thickness = 7.0f;
     Vector2 currentLayer[4];
-
     for (int i = 0; i < pointCount; i++) 
     {
         currentLayer[i] = points[i];
@@ -37,7 +36,7 @@ void DrawLineLoopAuto(Vector2* points, int pointCount, Color color, int createAm
             Vector2 A = currentLayer[curr];
             Vector2 B = currentLayer[next];
 
-            DrawLineEx(A, B, thickness, color);
+            DrawLineEx(A, B, thickness, RGB);
 
             nextLayer[curr] = (currentLayer[curr] + currentLayer[next]) * 0.5f;
         }
@@ -88,7 +87,7 @@ int main()
         DrawText("", 10, 10, 20, GRAY);
         //DrawLineLoop(curr, 4, VIOLET);
         //DrawLineLoop(next, 4, LIME);
-        DrawLineLoopAuto(curr, 4, VIOLET, 10);
+        DrawLineLoopAuto(curr, 4, 10);
         EndDrawing();
     }
 
