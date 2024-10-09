@@ -29,6 +29,7 @@ void DrawLineLoopAuto(Vector2* points, int pointCount, int createAmount)
 {
     float thickness = 7.0f;
     Vector2 currentLayer[4];
+    Vector2* tempPointsArray = new Vector2[pointCount * createAmount];
     for (int i = 0; i < pointCount; i++)
     {
         currentLayer[i] = points[i];
@@ -38,16 +39,16 @@ void DrawLineLoopAuto(Vector2* points, int pointCount, int createAmount)
     {
         Vector2 nextLayer[4];
 
-        for (int i = 0; i < pointCount; i++)
+        for (int curr = 0; curr < pointCount; curr++)
         {
-            int curr = i;
-            int next = (i + 1) % pointCount;
+            int next = (curr + 1) % pointCount;
             Vector2 A = currentLayer[curr];
             Vector2 B = currentLayer[next];
 
+            tempPointsArray[k * 4 + curr] = currentLayer[curr];
+            std::cout << "x: " << tempPointsArray[k * 4 + curr].x << "y: " << tempPointsArray[k * 4 + curr].y << "positionD: " << k*4+curr << std::endl;
             glBufferSubData(GL_ARRAY_BUFFER, 0, 4 * sizeof(Vector2), currentLayer);
             glDrawArrays(GL_LINE_LOOP, 0, 4);
-
             nextLayer[curr] = (currentLayer[curr] + currentLayer[next]) * 0.5f;
         }
         for (int i = 0; i < pointCount; i++)
@@ -55,6 +56,8 @@ void DrawLineLoopAuto(Vector2* points, int pointCount, int createAmount)
             currentLayer[i] = nextLayer[i];
         }
     }
+    //glBufferSubData(GL_ARRAY_BUFFER, 0, 4 * sizeof(Vector2), tempPointsArray);
+    //glDrawArrays(GL_LINE_LOOP, 0, 4); // Thinking this only draws lines from vertex 0, 1, 2, 3 ,4. Cannot find the rest of the vertex to draw from
 }
 
 int main(void)
