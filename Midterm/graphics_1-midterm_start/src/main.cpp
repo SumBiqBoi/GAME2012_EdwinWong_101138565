@@ -139,25 +139,29 @@ int main()
     };
 
     // Task 1 -- loop through all vertices to assign positions and colors
-    int loopVerts = 30000;
+    const int loopVerts = 30000;
     Vertices vertices(loopVerts);
 
-    Vertex triangle[3];
-    Vector3 currentPos[2];
-    Vector3 nextPos[1];
+    Vertex vertex[loopVerts];
+    Vector3 prevPos[loopVerts];
+    Vector3 currentPos[loopVerts];
+    Vector3 nextPos;
     Vector3 currentColour[3];
 
-    currentPos[0] = (positions[0] + positions[1]) * 0.5f;
-    currentPos[1] = (currentPos[0] + positions[0]) * 0.5f;
+    //currentPos[0] = (positions[0] + positions[1]) * 0.5f;
+    //currentPos[1] = (currentPos[0] + positions[0]) * 0.5f;
     for (int i = 0; i < loopVerts; i++)
     {
-        
-        int k = (int)(rand() % 3);
-        int next = (i + 1) % 2;
+        // Find midpoint so - next vertex = (current vertex + previous vertex) * 0.5 
+        // Need to make currentPos and prevPos have a value
+        vertex[i].position = (currentPos[i] + prevPos[i]) * 0.5f;
 
-        nextPos[i] = (currentPos[i] + currentPos[next]) * 0.5f;
-        currentColour[i] = colors[k];
-        currentPos[next] = nextPos[i];
+        //int k = (int)(rand() % 3);
+        //int next = (i + 1) % 2;
+        //
+        //nextPos[i] = (currentPos[i] + currentPos[next]) * 0.5f;
+        //currentColour[i] = colors[k];
+        //currentPos[next] = nextPos[i];
         
     }
 
