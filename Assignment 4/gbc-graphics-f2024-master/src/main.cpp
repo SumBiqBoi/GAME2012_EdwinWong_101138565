@@ -2,6 +2,9 @@
 #include <GLFW/glfw3.h>
 #include "Mesh.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
@@ -87,6 +90,7 @@ int main(void)
     GLuint fsVertexColor = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/vertex_color.frag");
     GLuint fsTcoords = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/tcoord_color.frag");
     GLuint fsNormals = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/normal_color.frag");
+    GLuint fsTexture = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/texture_color.frag");
     
     // Shader programs:
     GLuint shaderUniformColor = CreateProgram(vs, fsUniformColor);
@@ -95,6 +99,23 @@ int main(void)
     GLuint shaderLines = CreateProgram(vsLines, fsLines);
     GLuint shaderTcoords = CreateProgram(vs, fsTcoords);
     GLuint shaderNormals = CreateProgram(vs, fsNormals);
+    GLuint shaderTexture = CreateProgram(vs, fsTexture);
+
+    // Step 1: Load image from disk to CPU
+    int textureWidth = 0;
+    int textureHeight = 0;
+    int textureChannels = 0;
+    stbi_uc* pixels = stbi_load("./assets/textures/ct4_grey.png", &textureWidth, &textureHeight, &textureChannels, 0);
+
+    // Step 2: Upload image from CPU to GPU
+    GLuint texture = GL_NONE;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureWidth, textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 
     // Positions of our triangle's vertices (CCW winding-order)
     Vector3 positions[] =
@@ -257,10 +278,11 @@ int main(void)
     // Whether we render the imgui demo widgets
     bool imguiDemo = false;
 
-    Mesh shapeMesh, objMesh, objHeadMesh;
+    Mesh shapeMesh, objMesh, objHeadMesh, ct4Mesh;
     CreateMesh(&shapeMesh, CUBE);
     CreateMesh(&objMesh, "assets/meshes/plane.obj");
     CreateMesh(&objHeadMesh, "assets/meshes/head.obj");
+    CreateMesh(&ct4Mesh, "assets/meshes/ct4.obj");
 
     // Render looks weird cause this isn't enabled, but its causing unexpected problems which I'll fix soon!
     glEnable(GL_DEPTH_TEST);
@@ -313,12 +335,10 @@ int main(void)
 
         Matrix world = MatrixIdentity();
         Matrix view = LookAt(camPos, camPos - V3_FORWARD, V3_UP);
-        Matrix proj = projection == ORTHO ?
-            Ortho(left, right, bottom, top, near, far) :
-            Perspective(fov, SCREEN_ASPECT, near, far);
+        Matrix proj = projection == ORTHO ? Ortho(left, right, bottom, top, near, far) : Perspective(fov, SCREEN_ASPECT, near, far);
         Matrix mvp = MatrixIdentity();
         GLint u_mvp = GL_NONE;
-
+        GLint u_tex = GL_NONE;
         GLuint shaderProgram = GL_NONE;
 
         switch (object + 1)
@@ -347,18 +367,16 @@ int main(void)
             break;
 
         case 3:
-            shaderProgram = shaderLines;
+            shaderProgram = shaderTexture;
             glUseProgram(shaderProgram);
-            glUniform1f(glGetUniformLocation(shaderProgram, "u_a"), a);
-            glLineWidth(10.0f);
-            glBindVertexArray(vaoLines);
-            glBindBuffer(GL_ARRAY_BUFFER, pboLines);
-
-            glBufferSubData(GL_ARRAY_BUFFER, 0, 4 * sizeof(Vector2), curr);
-            glDrawArrays(GL_LINE_LOOP, 0, 4);
-
-            glBufferSubData(GL_ARRAY_BUFFER, 0, 4 * sizeof(Vector2), next);
-            glDrawArrays(GL_LINE_LOOP, 0, 4);
+            world = MatrixIdentity();
+            mvp = world * view * proj;
+            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
+            u_tex = glGetUniformLocation(shaderProgram, "u_tex");
+            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
+            glUniform1i(u_tex, 0);
+            glActiveTexture(GL_TEXTURE0);
+            DrawMesh(ct4Mesh);
             break;
 
         case 4:

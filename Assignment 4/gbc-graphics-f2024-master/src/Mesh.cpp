@@ -110,7 +110,13 @@ void CreateMesh(Mesh* mesh, ShapeType shape)
 
 void DestroyMesh(Mesh* mesh)
 {
+	glDeleteBuffers(1, &mesh->pbo);
+	glDeleteBuffers(1, &mesh->tbo);
+	glDeleteBuffers(1, &mesh->nbo);
+	glDeleteBuffers(1, &mesh->ebo);
+	glDeleteVertexArrays(1, &mesh->vao);
 
+	mesh->vao = mesh->pbo = mesh->tbo = mesh->nbo = mesh->ebo = GL_NONE;
 }
 
 void DrawMesh(const Mesh& mesh)
