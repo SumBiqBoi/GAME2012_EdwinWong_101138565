@@ -258,7 +258,7 @@ int main(void)
     bool imguiDemo = false;
 
     Mesh shapeMesh, objMesh, objHeadMesh;
-    CreateMesh(&shapeMesh, PLANE);
+    CreateMesh(&shapeMesh, CUBE);
     CreateMesh(&objMesh, "assets/meshes/plane.obj");
     CreateMesh(&objHeadMesh, "assets/meshes/head.obj");
 
@@ -324,14 +324,14 @@ int main(void)
         switch (object + 1)
         {
         case 1:
-            shaderProgram = shaderVertexBufferColor;
+            shaderProgram = shaderNormals;
             glUseProgram(shaderProgram);
-            world = s * r * t;
+            world = MatrixIdentity();
+            world = RotateY(100.0f * time * DEG2RAD);
             mvp = world * view * proj;
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            glBindVertexArray(vao);
-            glDrawArrays(GL_TRIANGLES, 0, 3);
+            DrawMesh(shapeMesh);
             break;
 
         case 2:
@@ -339,7 +339,7 @@ int main(void)
             //shaderProgram = shaderNormals;
             glUseProgram(shaderProgram);
             world = MatrixIdentity();
-            //world = RotateY(100.0f * time * DEG2RAD);
+            world = RotateY(100.0f * time * DEG2RAD);
             mvp = world * view * proj;
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
@@ -362,11 +362,14 @@ int main(void)
             break;
 
         case 4:
-            shaderProgram = shaderLines;
+            shaderProgram = shaderVertexBufferColor;
             glUseProgram(shaderProgram);
-            glLineWidth(1.0f);
-            glBindVertexArray(vaoMoreLines);
-            glDrawArrays(GL_LINES, 0, lineVertexCount);
+            world = s * r * t;
+            mvp = world * view * proj;
+            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
+            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
+            glBindVertexArray(vao);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
             break;
 
         case 5:
