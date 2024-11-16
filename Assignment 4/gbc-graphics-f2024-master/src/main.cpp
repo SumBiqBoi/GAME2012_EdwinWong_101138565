@@ -105,17 +105,31 @@ int main(void)
     int textureWidth = 0;
     int textureHeight = 0;
     int textureChannels = 0;
-    stbi_uc* pixels = stbi_load("./assets/textures/ct4_grey.png", &textureWidth, &textureHeight, &textureChannels, 0);
+    stbi_uc* ct4Pixels = stbi_load("./assets/textures/ct4_grey.png", &textureWidth, &textureHeight, &textureChannels, 0);
+    //stbi_uc* knifePixels = stbi_load("./assets/textures/knife_colour.png", &textureWidth, &textureHeight, &textureChannels, 0);
 
     // Step 2: Upload image from CPU to GPU
-    GLuint texture = GL_NONE;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
+    GLuint ct4Texture = GL_NONE;
+    glGenTextures(1, &ct4Texture);
+    glBindTexture(GL_TEXTURE_2D, ct4Texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureWidth, textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureWidth, textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, ct4Pixels);
+    stbi_image_free(ct4Pixels);
+    ct4Pixels = nullptr;
+
+    //GLuint knifeTexture = GL_NONE;
+    //glGenTextures(1, &knifeTexture);
+    //glBindTexture(GL_TEXTURE_2D, knifeTexture);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureWidth, textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, knifePixels);
+    //stbi_image_free(knifePixels);
+    //knifePixels = nullptr;
 
     // Positions of our triangle's vertices (CCW winding-order)
     Vector3 positions[] =
@@ -278,33 +292,77 @@ int main(void)
     // Whether we render the imgui demo widgets
     bool imguiDemo = false;
 
-    Mesh shapeMesh, objMesh, objHeadMesh, ct4Mesh;
+    Mesh shapeMesh, objMesh, objHeadMesh, ct4Mesh, knifeMesh;
     CreateMesh(&shapeMesh, CUBE);
     CreateMesh(&objMesh, "assets/meshes/plane.obj");
     CreateMesh(&objHeadMesh, "assets/meshes/head.obj");
     CreateMesh(&ct4Mesh, "assets/meshes/ct4.obj");
+    CreateMesh(&knifeMesh, "assets/meshes/knife.obj");
+
+    float camPitch = 0;
+    float camYaw = 0;
+    float camSpeed = 10.0f;
 
     // Render looks weird cause this isn't enabled, but its causing unexpected problems which I'll fix soon!
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
 
+    float timePrev = glfwGetTime();
+    float timeCurr = glfwGetTime();
+    float dt = 0.0f;
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
+        float time = glfwGetTime();
+        timePrev = time;
+        //printf("%f\n", dt);
+
         // Change object when space is pressed
-        if (IsKeyPressed(GLFW_KEY_SPACE))
+        if (IsKeyPressed(GLFW_KEY_F))
         {
             ++object %= 5;
             printf("Object %i\n", object + 1);
         }
 
+        Matrix camRotation = ToMatrix(FromEuler(camPitch * DEG2RAD, camYaw * DEG2RAD, 0.0f));
+        Matrix camTranslation = Translate(camPos);
+        Vector3 camRight = { camRotation.m0, camRotation.m1, camRotation.m2 };
+        Vector3 camUp = { camRotation.m4, camRotation.m5, camRotation.m6 };
+        Vector3 camForward = { camRotation.m8, camRotation.m9,camRotation.m10 };
+        float camDelta = camSpeed * dt;
+        Matrix camMatrix = camRotation * camTranslation;
+
+        if (IsKeyDown(GLFW_KEY_W))
+        {
+            camPos -= camForward * camDelta;
+        }
+        if (IsKeyDown(GLFW_KEY_S))
+        {
+            camPos += camForward * camDelta;
+        }
+        if (IsKeyDown(GLFW_KEY_A))
+        {
+            camPos -= camRight * camDelta;
+        }
+        if (IsKeyDown(GLFW_KEY_D))
+        {
+            camPos += camRight * camDelta;
+        }
+        if (IsKeyDown(GLFW_KEY_SPACE))
+        {
+            camPos -= camUp * camDelta;
+        }
+        if (IsKeyDown(GLFW_KEY_LEFT_SHIFT))
+        {
+            camPos += camUp * camDelta;
+        }
         if (IsKeyPressed(GLFW_KEY_I))
             imguiDemo = !imguiDemo;
 
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        float time = glfwGetTime();
 
         // Interpolation parameter (0 means fully A, 1 means fully B)
         float a = cosf(time) * 0.5f + 0.5f;
@@ -333,7 +391,7 @@ int main(void)
         Matrix r = ToMatrix(rC);
         Matrix t = Translate(tC);
 
-        Matrix world = MatrixIdentity();
+        Matrix world = camMatrix;
         Matrix view = LookAt(camPos, camPos - V3_FORWARD, V3_UP);
         Matrix proj = projection == ORTHO ? Ortho(left, right, bottom, top, near, far) : Perspective(fov, SCREEN_ASPECT, near, far);
         Matrix mvp = MatrixIdentity();
@@ -347,7 +405,7 @@ int main(void)
             shaderProgram = shaderNormals;
             glUseProgram(shaderProgram);
             world = MatrixIdentity();
-            world = RotateY(100.0f * time * DEG2RAD);
+            //world = RotateY(100.0f * time * DEG2RAD);
             mvp = world * view * proj;
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
@@ -359,7 +417,7 @@ int main(void)
             //shaderProgram = shaderNormals;
             glUseProgram(shaderProgram);
             world = MatrixIdentity();
-            world = RotateY(100.0f * time * DEG2RAD);
+            //world = RotateY(100.0f * time * DEG2RAD);
             mvp = world * view * proj;
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
@@ -369,6 +427,7 @@ int main(void)
         case 3:
             shaderProgram = shaderTexture;
             glUseProgram(shaderProgram);
+            //world = Scale(2.0f, 2.0f, 2.0f);
             world = MatrixIdentity();
             mvp = world * view * proj;
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
@@ -391,15 +450,16 @@ int main(void)
             break;
 
         case 5:
-            shaderProgram = shaderTcoords;
-            //shaderProgram = shaderNormals;
+            shaderProgram = shaderTexture;
             glUseProgram(shaderProgram);
             world = MatrixIdentity();
-            //world = RotateY(100.0f * time * DEG2RAD);
             mvp = world * view * proj;
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
-            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            DrawMesh(objHeadMesh);
+            u_tex = glGetUniformLocation(shaderProgram, "u_tex");
+            glUniformMatrix4fv(u_mvp, 0, GL_FALSE, ToFloat16(mvp).v);
+            glUniform1i(u_tex, 0);
+            glActiveTexture(GL_TEXTURE1);
+            DrawMesh(knifeMesh);
             break;
         }
 
@@ -432,6 +492,9 @@ int main(void)
         
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        timeCurr = glfwGetTime();
+        dt = timeCurr - timePrev;
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
