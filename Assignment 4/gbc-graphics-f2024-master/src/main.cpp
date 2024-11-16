@@ -149,10 +149,10 @@ int main(void)
 
     Vector2 curr[4]
     {
-        { -1.0f,  1.0f },   // top-left
-        {  1.0f,  1.0f },   // top-right
-        {  1.0f, -1.0f },   // bot-right
-        { -1.0f, -1.0f }    // bot-left
+        { -0.5f,  0.5f },   // top-left
+        {  0.5f,  0.5f },   // top-right
+        {  0.5f, -0.5f },   // bot-right
+        { -0.5f, -0.5f }    // bot-left
     };
 
     Vector2 next[4]
@@ -214,55 +214,6 @@ int main(void)
     //    V3_FORWARD  // v1 end
     //};
 
-    // GL_LINES: Vertices 0 and 1 are considered a line. Vertices 2 and 3 are considered a line. And so on.
-    int lineVertexCount = SCREEN_WIDTH * 2;
-    std::vector<Vector2> linePositions(lineVertexCount);
-    std::vector<Vector3> lineColors(lineVertexCount);
-
-    // Since lines are 2 vertices each, its easier to count up by 2 each iteration
-    for (int i = 0; i < lineVertexCount; i += 2)
-    {
-        float x = Remap(i, 0, lineVertexCount, -1.0f, 1.0f);
-        int A = i + 0;
-        int B = i + 1;
-        linePositions[A].x = x;
-        linePositions[B].x = x;
-        linePositions[A].y =  1.0f;
-        linePositions[B].y = -1.0f;
-        lineColors[A] = V3_RIGHT;
-        lineColors[B] = V3_UP;
-    }
-
-    GLuint vaoMoreLines, pboMoreLines, cboMoreLines;
-    glGenVertexArrays(1, &vaoMoreLines);
-    glBindVertexArray(vaoMoreLines);
-
-    glGenBuffers(1, &pboMoreLines);
-    glBindBuffer(GL_ARRAY_BUFFER, pboMoreLines);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Vector2) * lineVertexCount, linePositions.data(), GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vector2), nullptr);
-    glEnableVertexAttribArray(0);
-
-    glGenBuffers(1, &cboMoreLines);
-    glBindBuffer(GL_ARRAY_BUFFER, cboMoreLines);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Vector3) * lineVertexCount, lineColors.data(), GL_STATIC_DRAW);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vector3), nullptr);
-    glEnableVertexAttribArray(1);
-
-    //glGenBuffers(1, &pboMoreLines);
-    //glBindBuffer(GL_ARRAY_BUFFER, pboMoreLines);
-    //glBufferData(GL_ARRAY_BUFFER, sizeof(Line) * lines.size(), lines.data(), GL_STATIC_DRAW);
-    //glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Line), nullptr);
-    //glEnableVertexAttribArray(0);
-
-    //glGenBuffers(1, &cboMoreLines);
-    //glBindBuffer(GL_ARRAY_BUFFER, cboMoreLines);
-    //glBufferData(GL_ARRAY_BUFFER, sizeof(Vector3) * lineColors.size(), lineColors.data(), GL_STATIC_DRAW);
-    //glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vector3), nullptr);
-    //glEnableVertexAttribArray(1);
-
-    glBindVertexArray(GL_NONE);
-
     // In summary, we need 3 things to render:
     // 1. Vertex data -- right now just positions.
     // 2. Shader -- vs forwards input, fs colours.
@@ -311,12 +262,20 @@ int main(void)
     float timeCurr = glfwGetTime();
     float dt = 0.0f;
 
+    double pmx = 0.0, pmy = 0.0, mx = 0.0, my = 0.0;
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
         float time = glfwGetTime();
         timePrev = time;
-        //printf("%f\n", dt);
+
+        pmx = mx; pmy = my;
+        glfwGetCursorPos(window, &mx, &my);
+        Vector2 mouseDelta = { mx - pmx, my - pmy };
+        float mouseScale = 1.0f;
+        camPitch += mouseDelta.y * mouseScale;
+        //camYaw += mouseDelta.x * mouseScale;
+        printf("x: %f, y: %f, cam Pitch: %f\n", mouseDelta.x, mouseDelta.y, camPitch);
 
         // Change object when space is pressed
         if (IsKeyPressed(GLFW_KEY_F))
@@ -327,6 +286,7 @@ int main(void)
 
         Matrix camRotation = ToMatrix(FromEuler(camPitch * DEG2RAD, camYaw * DEG2RAD, 0.0f));
         Matrix camTranslation = Translate(camPos);
+        //printf("Cam Rotation: \n", camRotation);
         Vector3 camRight = { camRotation.m0, camRotation.m1, camRotation.m2 };
         Vector3 camUp = { camRotation.m4, camRotation.m5, camRotation.m6 };
         Vector3 camForward = { camRotation.m8, camRotation.m9,camRotation.m10 };
@@ -335,11 +295,11 @@ int main(void)
 
         if (IsKeyDown(GLFW_KEY_W))
         {
-            camPos -= camForward * camDelta;
+            camPos += camForward * camDelta;
         }
         if (IsKeyDown(GLFW_KEY_S))
         {
-            camPos += camForward * camDelta;
+            camPos -= camForward * camDelta;
         }
         if (IsKeyDown(GLFW_KEY_A))
         {
@@ -351,11 +311,11 @@ int main(void)
         }
         if (IsKeyDown(GLFW_KEY_SPACE))
         {
-            camPos -= camUp * camDelta;
+            camPos += camUp * camDelta;
         }
         if (IsKeyDown(GLFW_KEY_LEFT_SHIFT))
         {
-            camPos += camUp * camDelta;
+            camPos -= camUp * camDelta;
         }
         if (IsKeyPressed(GLFW_KEY_I))
             imguiDemo = !imguiDemo;
@@ -391,7 +351,7 @@ int main(void)
         Matrix r = ToMatrix(rC);
         Matrix t = Translate(tC);
 
-        Matrix world = camMatrix;
+        Matrix world = MatrixIdentity();
         Matrix view = LookAt(camPos, camPos - V3_FORWARD, V3_UP);
         Matrix proj = projection == ORTHO ? Ortho(left, right, bottom, top, near, far) : Perspective(fov, SCREEN_ASPECT, near, far);
         Matrix mvp = MatrixIdentity();
@@ -439,14 +399,13 @@ int main(void)
             break;
 
         case 4:
-            shaderProgram = shaderVertexBufferColor;
+            shaderProgram = shaderLines;
             glUseProgram(shaderProgram);
-            world = s * r * t;
-            mvp = world * view * proj;
-            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
-            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            glBindVertexArray(vao);
-            glDrawArrays(GL_TRIANGLES, 0, 3);
+            glUniform1f(glGetUniformLocation(shaderProgram, "u_a"), a);
+            glLineWidth(2.5f);
+            glBindVertexArray(vaoLines);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, 4 * sizeof(Vector2), curr);
+            glDrawArrays(GL_LINE_LOOP, 0, 4);
             break;
 
         case 5:

@@ -49,7 +49,7 @@ void DrawLineLoopAuto(Vector2* points, int pointCount, int createAmount)
             std::cout << "x: " << tempPointsArray[k * 4 + curr].x << "y: " << tempPointsArray[k * 4 + curr].y << "positionD: " << k*4+curr << std::endl;
             glBufferSubData(GL_ARRAY_BUFFER, 0, 4 * sizeof(Vector2), currentLayer);
             glDrawArrays(GL_LINE_LOOP, 0, 4);
-            nextLayer[curr] = (currentLayer[curr] + currentLayer[next]) * 0.5f;
+             nextLayer[curr] = (currentLayer[curr] + currentLayer[next]) * 0.5f;
         }
         for (int i = 0; i < pointCount; i++)
         {
