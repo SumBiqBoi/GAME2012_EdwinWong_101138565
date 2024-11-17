@@ -352,7 +352,7 @@ int main(void)
         Matrix t = Translate(tC);
 
         Matrix world = MatrixIdentity();
-        Matrix view = LookAt(camPos, camPos - V3_FORWARD, V3_UP);
+        Matrix view = LookAt(camPos, camPos - V3_FORWARD, V3_UP) * camMatrix;
         Matrix proj = projection == ORTHO ? Ortho(left, right, bottom, top, near, far) : Perspective(fov, SCREEN_ASPECT, near, far);
         Matrix mvp = MatrixIdentity();
         GLint u_mvp = GL_NONE;
