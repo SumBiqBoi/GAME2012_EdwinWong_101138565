@@ -102,6 +102,7 @@ int main(void)
     GLuint shaderTexture = CreateProgram(vs, fsTexture);
 
     // Step 1: Load image from disk to CPU
+    stbi_set_flip_vertically_on_load(true);
     int textureWidth = 0;
     int textureHeight = 0;
     int textureChannels = 0;
@@ -237,7 +238,7 @@ int main(void)
     float right = 1.0f;
     float top = 1.0f;
     float bottom = -1.0f;
-    float near = 1.0f; // 1.0 for testing purposes. Usually 0.1f or 0.01f
+    float near = 0.01f; // 1.0 for testing purposes. Usually 0.1f or 0.01f
     float far = 10.0f;
 
     // Whether we render the imgui demo widgets
