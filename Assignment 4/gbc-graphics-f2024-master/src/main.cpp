@@ -107,7 +107,10 @@ int main(void)
     int textureHeight = 0;
     int textureChannels = 0;
     stbi_uc* ct4Pixels = stbi_load("./assets/textures/ct4_grey.png", &textureWidth, &textureHeight, &textureChannels, 0);
-    //stbi_uc* knifePixels = stbi_load("./assets/textures/knife_colour.png", &textureWidth, &textureHeight, &textureChannels, 0);
+    int tKnifeWidth = 0;
+    int tKnifeHeight = 0;
+    int tKnifeChannels = 0;
+    stbi_uc* knifePixels = stbi_load("./assets/textures/knife_colour.jpg", &tKnifeWidth, &tKnifeHeight, &tKnifeChannels, 0);
 
     // Step 2: Upload image from CPU to GPU
     GLuint ct4Texture = GL_NONE;
@@ -121,16 +124,16 @@ int main(void)
     stbi_image_free(ct4Pixels);
     ct4Pixels = nullptr;
 
-    //GLuint knifeTexture = GL_NONE;
-    //glGenTextures(1, &knifeTexture);
-    //glBindTexture(GL_TEXTURE_2D, knifeTexture);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureWidth, textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, knifePixels);
-    //stbi_image_free(knifePixels);
-    //knifePixels = nullptr;
+    GLuint knifeTexture = GL_NONE;
+    glGenTextures(1, &knifeTexture);
+    glBindTexture(GL_TEXTURE_2D, knifeTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tKnifeWidth, tKnifeHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, knifePixels);
+    stbi_image_free(knifePixels);
+    knifePixels = nullptr;
 
     // Positions of our triangle's vertices (CCW winding-order)
     Vector3 positions[] =
@@ -275,7 +278,7 @@ int main(void)
         Vector2 mouseDelta = { mx - pmx, my - pmy };
         float mouseScale = 1.0f;
         camPitch += mouseDelta.y * mouseScale;
-        //camYaw += mouseDelta.x * mouseScale;
+        camYaw += mouseDelta.x * mouseScale;
         printf("x: %f, y: %f, cam Pitch: %f\n", mouseDelta.x, mouseDelta.y, camPitch);
 
         // Change object when space is pressed
@@ -292,15 +295,14 @@ int main(void)
         Vector3 camUp = { camRotation.m4, camRotation.m5, camRotation.m6 };
         Vector3 camForward = { camRotation.m8, camRotation.m9,camRotation.m10 };
         float camDelta = camSpeed * dt;
-        Matrix camMatrix = camRotation * camTranslation;
 
         if (IsKeyDown(GLFW_KEY_W))
         {
-            camPos += camForward * camDelta;
+            camPos -= camForward * camDelta;
         }
         if (IsKeyDown(GLFW_KEY_S))
         {
-            camPos -= camForward * camDelta;
+            camPos += camForward * camDelta;
         }
         if (IsKeyDown(GLFW_KEY_A))
         {
@@ -353,7 +355,7 @@ int main(void)
         Matrix t = Translate(tC);
 
         Matrix world = MatrixIdentity();
-        Matrix view = LookAt(camPos, camPos - V3_FORWARD, V3_UP) * camMatrix;
+        Matrix view = LookAt(camPos, camPos - V3_FORWARD, V3_UP) * camRotation;
         Matrix proj = projection == ORTHO ? Ortho(left, right, bottom, top, near, far) : Perspective(fov, SCREEN_ASPECT, near, far);
         Matrix mvp = MatrixIdentity();
         GLint u_mvp = GL_NONE;
@@ -396,6 +398,7 @@ int main(void)
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
             glUniform1i(u_tex, 0);
             glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, ct4Texture);
             DrawMesh(ct4Mesh);
             break;
 
@@ -418,7 +421,8 @@ int main(void)
             u_tex = glGetUniformLocation(shaderProgram, "u_tex");
             glUniformMatrix4fv(u_mvp, 0, GL_FALSE, ToFloat16(mvp).v);
             glUniform1i(u_tex, 0);
-            glActiveTexture(GL_TEXTURE1);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, knifeTexture);
             DrawMesh(knifeMesh);
             break;
         }
