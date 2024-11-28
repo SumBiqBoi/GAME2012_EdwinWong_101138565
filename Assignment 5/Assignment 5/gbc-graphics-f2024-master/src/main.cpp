@@ -91,6 +91,7 @@ int main(void)
     GLuint fsTcoords = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/tcoord_color.frag");
     GLuint fsNormals = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/normal_color.frag");
     GLuint fsTexture = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/texture_color.frag");
+    GLuint fsColor = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/grey_color.frag");
     
     // Shader programs:
     GLuint shaderUniformColor = CreateProgram(vs, fsUniformColor);
@@ -100,6 +101,7 @@ int main(void)
     GLuint shaderTcoords = CreateProgram(vs, fsTcoords);
     GLuint shaderNormals = CreateProgram(vs, fsNormals);
     GLuint shaderTexture = CreateProgram(vs, fsTexture);
+    GLuint shaderColor = CreateProgram(vs, fsColor);
 
     // Step 1: Load image from disk to CPU
     stbi_set_flip_vertically_on_load(true);
@@ -248,7 +250,7 @@ int main(void)
     bool imguiDemo = false;
 
     Mesh shapeMesh, objMesh, objHeadMesh, ct4Mesh, knifeMesh;
-    CreateMesh(&shapeMesh, CUBE);
+    CreateMesh(&shapeMesh, PLANE);
     CreateMesh(&objMesh, "assets/meshes/plane.obj");
     CreateMesh(&objHeadMesh, "assets/meshes/head.obj");
     CreateMesh(&ct4Mesh, "assets/meshes/ct4.obj");
@@ -279,7 +281,7 @@ int main(void)
         float mouseScale = 1.0f;
         camPitch += mouseDelta.y * mouseScale;
         camYaw += mouseDelta.x * mouseScale;
-        printf("x: %f, y: %f, cam Pitch: %f\n", mouseDelta.x, mouseDelta.y, camPitch);
+        //printf("x: %f, y: %f, cam Pitch: %f\n", mouseDelta.x, mouseDelta.y, camPitch);
 
         // Change object when space is pressed
         if (IsKeyPressed(GLFW_KEY_F))
@@ -295,6 +297,7 @@ int main(void)
         Vector3 camUp = { camRotation.m4, camRotation.m5, camRotation.m6 };
         Vector3 camForward = { camRotation.m8, camRotation.m9,camRotation.m10 };
         float camDelta = camSpeed * dt;
+        Matrix camMatrix = camRotation * camTranslation;
 
         if (IsKeyDown(GLFW_KEY_W))
         {
@@ -355,14 +358,14 @@ int main(void)
         Matrix t = Translate(tC);
 
         Matrix world = MatrixIdentity();
-        Matrix view = LookAt(camPos, camPos - V3_FORWARD, V3_UP) * camRotation;
+        Matrix view = LookAt(camPos, camPos - V3_FORWARD, V3_UP);
         Matrix proj = projection == ORTHO ? Ortho(left, right, bottom, top, near, far) : Perspective(fov, SCREEN_ASPECT, near, far);
         Matrix mvp = MatrixIdentity();
         GLint u_mvp = GL_NONE;
         GLint u_tex = GL_NONE;
         GLuint shaderProgram = GL_NONE;
 
-        switch (object + 1)
+        switch (object + 5)
         {
         case 1:
             shaderProgram = shaderNormals;
@@ -413,13 +416,22 @@ int main(void)
             break;
 
         case 5:
+            view = view * camRotation;
+            world = RotateX(90 * DEG2RAD);
+            world = Translate(0.0f, -5.0f, 0.0f);
+            mvp = world * view * proj;
+
+            shaderProgram = shaderColor;
+            glUseProgram(shaderProgram);
+            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
+            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
+            DrawMesh(shapeMesh);
+
             shaderProgram = shaderTexture;
             glUseProgram(shaderProgram);
-            world = MatrixIdentity();
-            mvp = world * view * proj;
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
             u_tex = glGetUniformLocation(shaderProgram, "u_tex");
-            glUniformMatrix4fv(u_mvp, 0, GL_FALSE, ToFloat16(mvp).v);
+            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
             glUniform1i(u_tex, 0);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, knifeTexture);
