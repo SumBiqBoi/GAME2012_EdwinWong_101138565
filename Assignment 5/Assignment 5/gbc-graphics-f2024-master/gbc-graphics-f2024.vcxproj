@@ -102,6 +102,21 @@
     <ClInclude Include="src\Math.h" />
     <ClInclude Include="src\Mesh.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="assets\shaders\buffer_color.vert" />
+    <None Include="assets\shaders\default.vert" />
+    <None Include="assets\shaders\grey_color.frag" />
+    <None Include="assets\shaders\lines.frag" />
+    <None Include="assets\shaders\lines.vert" />
+    <None Include="assets\shaders\normal_color.frag" />
+    <None Include="assets\shaders\phong.frag" />
+    <None Include="assets\shaders\tcoord_color.frag" />
+    <None Include="assets\shaders\textureWithPhong_color.frag" />
+    <None Include="assets\shaders\texture_color.frag" />
+    <None Include="assets\shaders\uniform_color.frag" />
+    <None Include="assets\shaders\vertex_color.frag" />
+    <None Include="assets\shaders\vertex_color.vert" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

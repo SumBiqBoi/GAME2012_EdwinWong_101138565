@@ -16,6 +16,9 @@
     <Filter Include="imgui">
       <UniqueIdentifier>{27cd33e8-d158-4c86-8a67-ad8f4c3a82c0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="shaders">
+      <UniqueIdentifier>{d8a1177e-eaba-4b45-9af8-5952dbffaed3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -44,6 +47,9 @@
     </ClCompile>
     <ClCompile Include="src\imgui\imgui_widgets.cpp">
       <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Mesh.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -77,5 +83,49 @@
     <ClInclude Include="src\imgui\imstb_truetype.h">
       <Filter>imgui</Filter>
     </ClInclude>
+    <ClInclude Include="src\Mesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="assets\shaders\buffer_color.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="assets\shaders\default.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="assets\shaders\grey_color.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="assets\shaders\lines.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="assets\shaders\lines.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="assets\shaders\normal_color.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="assets\shaders\phong.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="assets\shaders\tcoord_color.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="assets\shaders\texture_color.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="assets\shaders\textureWithPhong_color.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="assets\shaders\uniform_color.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="assets\shaders\vertex_color.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="assets\shaders\vertex_color.vert">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

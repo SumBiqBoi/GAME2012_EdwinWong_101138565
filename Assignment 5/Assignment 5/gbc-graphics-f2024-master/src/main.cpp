@@ -91,7 +91,9 @@ int main(void)
     GLuint fsTcoords = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/tcoord_color.frag");
     GLuint fsNormals = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/normal_color.frag");
     GLuint fsTexture = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/texture_color.frag");
+    GLuint fsTextureWithPhong = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/textureWithPhong_color.frag");
     GLuint fsColor = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/grey_color.frag");
+    GLuint fsPhong = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/phong.frag");
     
     // Shader programs:
     GLuint shaderUniformColor = CreateProgram(vs, fsUniformColor);
@@ -101,7 +103,9 @@ int main(void)
     GLuint shaderTcoords = CreateProgram(vs, fsTcoords);
     GLuint shaderNormals = CreateProgram(vs, fsNormals);
     GLuint shaderTexture = CreateProgram(vs, fsTexture);
+    GLuint shaderTextureWithPhong = CreateProgram(vs, fsTextureWithPhong);
     GLuint shaderColor = CreateProgram(vs, fsColor);
+    GLuint shaderPhong = CreateProgram(vs, fsPhong);
 
     // Step 1: Load image from disk to CPU
     stbi_set_flip_vertically_on_load(true);
@@ -237,7 +241,7 @@ int main(void)
     printf("Object %i\n", object + 1);
 
     Projection projection = PERSP;
-    Vector3 camPos{ 0.0f, 0.0f, 5.0f };
+    Vector3 cameraPos{ 0.0f, 0.0f, 5.0f }; // Camera position
     float fov = 75.0f * DEG2RAD;
     float left = -1.0f;
     float right = 1.0f;
@@ -248,9 +252,11 @@ int main(void)
 
     // Whether we render the imgui demo widgets
     bool imguiDemo = false;
+    bool camToggle = false;
 
-    Mesh shapeMesh, objMesh, objHeadMesh, ct4Mesh, knifeMesh;
-    CreateMesh(&shapeMesh, PLANE);
+    Mesh planeMesh, sphereMesh, objMesh, objHeadMesh, ct4Mesh, knifeMesh;
+    CreateMesh(&planeMesh, PLANE);
+    CreateMesh(&sphereMesh, SPHERE);
     CreateMesh(&objMesh, "assets/meshes/plane.obj");
     CreateMesh(&objHeadMesh, "assets/meshes/head.obj");
     CreateMesh(&ct4Mesh, "assets/meshes/ct4.obj");
@@ -259,6 +265,13 @@ int main(void)
     float camPitch = 0;
     float camYaw = 0;
     float camSpeed = 10.0f;
+
+    Vector3 lightPositionDir = { 10.0f,10.0f,10.0f };
+    Vector3 lightColor = { 1.0f, 1.0f, 1.0f };
+    float lightRadiusDir = 1.0f;
+
+    Vector3 lightPosition = { 2.0, 0.0, 2.0 };
+    float lightRadius = 1.0f;
 
     // Render looks weird cause this isn't enabled, but its causing unexpected problems which I'll fix soon!
     glEnable(GL_DEPTH_TEST);
@@ -275,12 +288,29 @@ int main(void)
         float time = glfwGetTime();
         timePrev = time;
 
+        Matrix camRotation = ToMatrix(FromEuler(camPitch * DEG2RAD, camYaw * DEG2RAD, 0.0f));
+        Matrix camTranslation = Translate(cameraPos);
+        //printf("Cam Rotation: \n", camRotation);
+        Vector3 camRight = { camRotation.m0, camRotation.m1, camRotation.m2 };
+        Vector3 camUp = { camRotation.m4, camRotation.m5, camRotation.m6 };
+        Vector3 camForward = { camRotation.m8, camRotation.m9,camRotation.m10 };
+        float camDelta = camSpeed * dt;
+        Matrix camMatrix = camRotation * camTranslation;
+
         pmx = mx; pmy = my;
         glfwGetCursorPos(window, &mx, &my);
         Vector2 mouseDelta = { mx - pmx, my - pmy };
         float mouseScale = 1.0f;
+
+        if (!camToggle)
+        {
+            camDelta = 0.0f;
+            mouseScale = 0.0f;
+        }
         camPitch += mouseDelta.y * mouseScale;
         camYaw += mouseDelta.x * mouseScale;
+
+
         //printf("x: %f, y: %f, cam Pitch: %f\n", mouseDelta.x, mouseDelta.y, camPitch);
 
         // Change object when space is pressed
@@ -290,41 +320,45 @@ int main(void)
             printf("Object %i\n", object + 1);
         }
 
-        Matrix camRotation = ToMatrix(FromEuler(camPitch * DEG2RAD, camYaw * DEG2RAD, 0.0f));
-        Matrix camTranslation = Translate(camPos);
-        //printf("Cam Rotation: \n", camRotation);
-        Vector3 camRight = { camRotation.m0, camRotation.m1, camRotation.m2 };
-        Vector3 camUp = { camRotation.m4, camRotation.m5, camRotation.m6 };
-        Vector3 camForward = { camRotation.m8, camRotation.m9,camRotation.m10 };
-        float camDelta = camSpeed * dt;
-        Matrix camMatrix = camRotation * camTranslation;
-
         if (IsKeyDown(GLFW_KEY_W))
         {
-            camPos -= camForward * camDelta;
+            cameraPos -= camForward * camDelta;
         }
         if (IsKeyDown(GLFW_KEY_S))
         {
-            camPos += camForward * camDelta;
+            cameraPos += camForward * camDelta;
         }
         if (IsKeyDown(GLFW_KEY_A))
         {
-            camPos -= camRight * camDelta;
+            cameraPos -= camRight * camDelta;
         }
         if (IsKeyDown(GLFW_KEY_D))
         {
-            camPos += camRight * camDelta;
+            cameraPos += camRight * camDelta;
         }
         if (IsKeyDown(GLFW_KEY_SPACE))
         {
-            camPos += camUp * camDelta;
+            cameraPos += camUp * camDelta;
         }
         if (IsKeyDown(GLFW_KEY_LEFT_SHIFT))
         {
-            camPos -= camUp * camDelta;
+            cameraPos -= camUp * camDelta;
         }
         if (IsKeyPressed(GLFW_KEY_I))
             imguiDemo = !imguiDemo;
+
+        if (IsKeyPressed(GLFW_KEY_C))
+        {
+            camToggle = !camToggle;
+            if (camToggle)
+            {
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            }
+            else
+            {
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            }
+        }
 
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -358,13 +392,24 @@ int main(void)
         Matrix t = Translate(tC);
 
         Matrix world = MatrixIdentity();
-        Matrix view = LookAt(camPos, camPos - V3_FORWARD, V3_UP);
+        Matrix normal = MatrixIdentity();
+        Matrix view = LookAt(cameraPos, cameraPos - V3_FORWARD, V3_UP);
         Matrix proj = projection == ORTHO ? Ortho(left, right, bottom, top, near, far) : Perspective(fov, SCREEN_ASPECT, near, far);
         Matrix mvp = MatrixIdentity();
-        GLint u_mvp = GL_NONE;
-        GLint u_tex = GL_NONE;
+        GLint u_world = -2;
+        GLint u_normal = -2;
+        GLint u_mvp = -2;
+        GLint u_tex = -2;
         GLuint shaderProgram = GL_NONE;
 
+        // Light handle
+        GLint u_cameraPosition = -2;
+        GLint u_lightPosition = -2;
+        GLint u_lightColor = -2;
+        GLint u_lightRadius = -2;
+        GLint u_lightPositionDir = -2;
+        GLint u_lightRadiusDir = -2;
+        
         switch (object + 5)
         {
         case 1:
@@ -375,7 +420,7 @@ int main(void)
             mvp = world * view * proj;
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            DrawMesh(shapeMesh);
+            DrawMesh(planeMesh);
             break;
 
         case 2:
@@ -416,29 +461,74 @@ int main(void)
             break;
 
         case 5:
+            float rotationAmount = 90.0f * DEG2RAD;
+            float planeValues = 20.0f;
             view = view * camRotation;
-            world = RotateX(90 * DEG2RAD);
-            world = Translate(0.0f, -5.0f, 0.0f);
+            Vector3 lightPosition = { 2.0 * sin(time), 1.0, 2.0 * cos(time) };
+
+            shaderProgram = shaderUniformColor;
+            glUseProgram(shaderProgram);
+            world = Scale(V3_ONE * lightRadiusDir) * Translate(lightPositionDir);
             mvp = world * view * proj;
-
-            shaderProgram = shaderColor;
-            glUseProgram(shaderProgram);
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
+            u_color = glGetUniformLocation(shaderProgram, "u_color");
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            DrawMesh(shapeMesh);
+            glUniform3fv(u_color, 1, &lightColor.x);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            DrawMesh(sphereMesh); // Draw directional light source
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-            shaderProgram = shaderTexture;
+            shaderProgram = shaderUniformColor;
             glUseProgram(shaderProgram);
+            world = Scale(V3_ONE * lightRadiusDir) * Translate(lightPosition);
+            mvp = world * view * proj;
+            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
+            u_color = glGetUniformLocation(shaderProgram, "u_color");
+            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
+            glUniform3fv(u_color, 1, &lightColor.x);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            DrawMesh(sphereMesh); // Draw orbit light source
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+            shaderProgram = shaderTextureWithPhong;
+            glUseProgram(shaderProgram);
+            world = Translate(0.0f, 0.0f, 0.0f);
+            mvp = world * view * proj;
+            normal = Transpose(Invert(world));
+            u_world = glGetUniformLocation(shaderProgram, "u_world");
+            u_normal = glGetUniformLocation(shaderProgram, "u_normal");
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
             u_tex = glGetUniformLocation(shaderProgram, "u_tex");
+            u_cameraPosition = glGetUniformLocation(shaderProgram, "u_cameraPosition");
+            u_lightPosition = glGetUniformLocation(shaderProgram, "u_lightPosition");
+            u_lightColor = glGetUniformLocation(shaderProgram, "u_lightColor");
+            u_lightRadius = glGetUniformLocation(shaderProgram, "u_lightRadius");
+            u_lightPositionDir = glGetUniformLocation(shaderProgram, "u_lightPositionDir");
+            u_lightRadiusDir = glGetUniformLocation(shaderProgram, "u_lightRadiusDir");
+            glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
+            glUniformMatrix3fv(u_normal, 1, GL_FALSE, ToFloat9(normal).v);
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
+            glUniform3fv(u_lightPosition, 1, &cameraPos.x);
+            glUniform3fv(u_lightPosition, 1, &lightPosition.x);
+            glUniform3fv(u_lightColor, 1, &lightColor.x);
+            glUniform1f(u_lightRadius, lightRadius);
+            glUniform3fv(u_lightPositionDir, 1, &lightPositionDir.x);
+            glUniform1f(u_lightRadiusDir, lightRadiusDir);
             glUniform1i(u_tex, 0);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, knifeTexture);
-            DrawMesh(knifeMesh);
+            DrawMesh(knifeMesh); // Draw knife mesh
+
+            shaderProgram = shaderColor;
+            glUseProgram(shaderProgram);
+            world = Scale(planeValues, planeValues, planeValues) * RotateX(rotationAmount) * Translate(-planeValues / 2, -1.5f, -planeValues / 2);
+            mvp = world * view * proj;
+            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
+            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
+            DrawMesh(planeMesh); // Draw plane
             break;
         }
-
+        
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
@@ -446,7 +536,10 @@ int main(void)
             ImGui::ShowDemoWindow();
         else
         {
-            ImGui::SliderFloat3("Camera Position", &camPos.x, -10.0f, 10.0f);
+            ImGui::SliderFloat3("Camera Position", &cameraPos.x, -10.0f, 10.0f);
+            ImGui::SliderFloat3("Direction Light Position", &lightPositionDir.x, -10.0f, 10.0f);
+            ImGui::SliderFloat3("Orbit Light Position", &lightPosition.x, -10.0f, 10.0f);
+            ImGui::SliderFloat("Orbit Light Radius", &lightRadius, 0.25f, 10.0f);
 
             ImGui::RadioButton("Orthographic", (int*)&projection, 0); ImGui::SameLine();
             ImGui::RadioButton("Perspective", (int*)&projection, 1);
