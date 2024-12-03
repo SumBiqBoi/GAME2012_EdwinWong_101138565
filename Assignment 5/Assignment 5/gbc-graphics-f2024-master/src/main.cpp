@@ -464,7 +464,34 @@ int main(void)
             glUseProgram(shaderProgram);
             world = Scale(planeValues, planeValues, planeValues) * RotateX(rotationAmount) * Translate(-planeValues / 2, -1.5f, -planeValues / 2);
             mvp = world * view * proj;
+            u_world = glGetUniformLocation(shaderProgram, "u_world");
+            u_normal = glGetUniformLocation(shaderProgram, "u_normal");
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
+            u_cameraPosition = glGetUniformLocation(shaderProgram, "u_cameraPosition");
+            u_lightPosition = glGetUniformLocation(shaderProgram, "u_lightPosition");
+            u_lightColor = glGetUniformLocation(shaderProgram, "u_lightColor");
+            u_lightRadius = glGetUniformLocation(shaderProgram, "u_lightRadius");
+            //u_lightPositionDir = glGetUniformLocation(shaderProgram, "u_lightPositionDir");
+            //u_lightRadiusDir = glGetUniformLocation(shaderProgram, "u_lightRadiusDir");
+            //u_cameraPositionSpot = glGetUniformLocation(shaderProgram, "u_cameraPositionSpot");
+            //u_lightPositionSpot = glGetUniformLocation(shaderProgram, "u_lightPositionSpot");
+            //u_lightColorSpot = glGetUniformLocation(shaderProgram, "u_lightColorSpot");
+            //u_lightRadiusSpot = glGetUniformLocation(shaderProgram, "u_lightRadiusSpot");
+            //u_lightDirSpot = glGetUniformLocation(shaderProgram, "u_lightDirSpot");
+            glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
+            glUniformMatrix3fv(u_normal, 1, GL_FALSE, ToFloat9(normal).v);
+            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
+            glUniform3fv(u_lightPosition, 1, &cameraPos.x);
+            glUniform3fv(u_lightPosition, 1, &lightPosition.x);
+            glUniform3fv(u_lightColor, 1, &lightColor.x);
+            glUniform1f(u_lightRadius, lightRadius);
+            //glUniform3fv(u_lightPositionDir, 1, &lightPositionDir.x);
+            //glUniform1f(u_lightRadiusDir, lightRadiusDir);
+            //glUniform3fv(u_lightPositionSpot, 1, &cameraPos.x);
+            //glUniform3fv(u_lightPositionSpot, 1, &lightPositionSpot.x);
+            //glUniform3fv(u_lightColorSpot, 1, &lightColorSpot.x);
+            //glUniform3fv(u_lightDirSpot, 1, &lightDirSpot.x);
+            //glUniform1f(u_lightRadiusSpot, lightRadiusSpot);
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
             DrawMesh(planeMesh); // Draw plane
             break;
@@ -481,6 +508,8 @@ int main(void)
             ImGui::SliderFloat3("Direction Light Position", &lightPositionDir.x, -10.0f, 10.0f);
             ImGui::SliderFloat3("Orbit Light Position", &lightPosition.x, -10.0f, 10.0f);
             ImGui::SliderFloat("Orbit Light Radius", &lightRadius, 0.25f, 10.0f);
+            ImGui::SliderFloat3("Spot Light Position", &lightPositionSpot.x, -10.0f, 10.0f);
+            ImGui::SliderFloat("Spot Light Radius", &lightRadiusSpot, 0.25f, 10.0f);
 
             ImGui::RadioButton("Orthographic", (int*)&projection, 0); ImGui::SameLine();
             ImGui::RadioButton("Perspective", (int*)&projection, 1);

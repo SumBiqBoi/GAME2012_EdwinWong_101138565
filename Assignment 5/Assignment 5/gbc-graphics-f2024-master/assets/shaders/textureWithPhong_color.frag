@@ -25,25 +25,21 @@ uniform float u_lightRadiusSpot;
 void main()
 {
     // Spot Light
-    vec3 NSpot = normalize(normal);
-    vec3 LSpot = normalize(u_lightPositionSpot - position);
-    vec3 VSpot = normalize(u_cameraPositionSpot - position);
-    vec3 RSpot = normalize(reflect(LSpot, NSpot));
-    float dotNLSpot = max(dot(NSpot, LSpot), 0.0);
-    float dotVRSpot = max(dot(VSpot, RSpot), 0.0);
+    vec3 LSpot = normalize(position - u_lightPositionSpot);
+    vec3 spotDir = normalize(-u_lightDirSpot);
+    float theta = dot(LSpot, spotDir);
 
-    float distSpot = length(u_lightPositionSpot - position);
-    float attenuationSpot = clamp(u_lightRadiusSpot / distSpot, 0.0, 1.0);
+    float inCutoff = cos(radians(u_lightRadiusSpot / 2.0));
+    float outCutoff = cos(radians((u_lightRadiusSpot / 2.0) + 0.5));
+    float epsilon = inCutoff - outCutoff;
+
+    float intensity = clamp((theta - outCutoff) / epsilon, 0.0, 1.0);
 
     vec3 lightingSpot = vec3(0.0);
-    vec3 ambientSpot = u_lightColorSpot * 0.5;
-    vec3 diffuseSpot = u_lightColorSpot * dotNLSpot;
-    vec3 specularSpot = u_lightColorSpot * pow(dotVRSpot, 64);
+    vec3 ambientSpot = u_lightColorSpot * 0.3;
 
     lightingSpot += ambientSpot;
-    lightingSpot += diffuseSpot;
-    lightingSpot += specularSpot;
-    lightingSpot *= attenuationSpot;
+    lightingSpot *= intensity;
 
     // Orbit Light
     vec3 N = normalize(normal);
@@ -57,7 +53,7 @@ void main()
     float attenuation = clamp(u_lightRadius / dist, 0.0, 1.0);
 
     vec3 lighting = vec3(0.0);
-    vec3 ambient = u_lightColor * 0.5;
+    vec3 ambient = u_lightColor * 0.3;
     vec3 diffuse = u_lightColor * dotNL;
     vec3 specular = u_lightColor * pow(dotVR, 64);
 
@@ -75,7 +71,7 @@ void main()
     float attenuationDir = clamp(u_lightRadiusDir / distDir, 0.0, 1.0);
 
     vec3 lightingDir = vec3(0.0);
-    vec3 ambientDir = u_lightColor * 0.5;
+    vec3 ambientDir = u_lightColor * 0.3;
     vec3 diffuseDir = u_lightColor * dotNLDir;
 
     lightingDir += ambientDir;
