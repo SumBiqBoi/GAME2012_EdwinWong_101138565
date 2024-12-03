@@ -109,27 +109,12 @@ int main(void)
 
     // Step 1: Load image from disk to CPU
     stbi_set_flip_vertically_on_load(true);
-    int textureWidth = 0;
-    int textureHeight = 0;
-    int textureChannels = 0;
-    stbi_uc* ct4Pixels = stbi_load("./assets/textures/ct4_grey.png", &textureWidth, &textureHeight, &textureChannels, 0);
     int tKnifeWidth = 0;
     int tKnifeHeight = 0;
     int tKnifeChannels = 0;
     stbi_uc* knifePixels = stbi_load("./assets/textures/knife_colour.jpg", &tKnifeWidth, &tKnifeHeight, &tKnifeChannels, 0);
 
     // Step 2: Upload image from CPU to GPU
-    GLuint ct4Texture = GL_NONE;
-    glGenTextures(1, &ct4Texture);
-    glBindTexture(GL_TEXTURE_2D, ct4Texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureWidth, textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, ct4Pixels);
-    stbi_image_free(ct4Pixels);
-    ct4Pixels = nullptr;
-
     GLuint knifeTexture = GL_NONE;
     glGenTextures(1, &knifeTexture);
     glBindTexture(GL_TEXTURE_2D, knifeTexture);
@@ -206,34 +191,6 @@ int main(void)
 
     glBindVertexArray(GL_NONE);
 
-    // Example of how to draw 2 separate lines each with unique vertex colours
-    //Vector2 linePositions[4]
-    //{
-    //    { -1.0f, -1.0f },   // v0 start
-    //    {  1.0f,  1.0f },   // v0 end
-    //
-    //    { -1.0f, 0.5f },    // v1 start 
-    //    {  1.0f, 0.5f },    // v1 end
-    //};
-    //
-    //Vector3 lineColors[4]
-    //{
-    //    V3_RIGHT,   // v0 start
-    //    V3_UP,      // v0 end
-    //    V3_ONE,     // v1 start
-    //    V3_FORWARD  // v1 end
-    //};
-
-    // In summary, we need 3 things to render:
-    // 1. Vertex data -- right now just positions.
-    // 2. Shader -- vs forwards input, fs colours.
-    // 3. Draw call -- draw 3 vertices interpreted as a triangle (GL_TRIANGLES)
-    // *** Everything is just data and behaviour ***
-    // *** vao & vbo describe data, shaders describe behaviour ***
-
-    // Fetch handles to uniform ("constant") variables.
-    // OpenGL handles are like addresses (&) in c++ -- they tell us the location of our data on the GPU.
-    // In the case of uniforms, we need to know their handle (location) before we can use them!
     GLint u_color = glGetUniformLocation(shaderUniformColor, "u_color");
     GLint u_intensity = glGetUniformLocation(shaderUniformColor, "u_intensity");
 
@@ -241,7 +198,10 @@ int main(void)
     printf("Object %i\n", object + 1);
 
     Projection projection = PERSP;
-    Vector3 cameraPos{ 0.0f, 0.0f, 5.0f }; // Camera position
+    Vector3 cameraPos{ 0.0f, 0.0f, 3.0f }; // Camera position
+    Vector3 cameraTarget = { 0.0f, 0.0f,0.0f };
+    Vector3 cameraDir = Normalize(cameraPos - cameraTarget);
+    Quaternion camRot = QuaternionIdentity();
     float fov = 75.0f * DEG2RAD;
     float left = -1.0f;
     float right = 1.0f;
@@ -254,12 +214,9 @@ int main(void)
     bool imguiDemo = false;
     bool camToggle = false;
 
-    Mesh planeMesh, sphereMesh, objMesh, objHeadMesh, ct4Mesh, knifeMesh;
+    Mesh planeMesh, sphereMesh, knifeMesh;
     CreateMesh(&planeMesh, PLANE);
     CreateMesh(&sphereMesh, SPHERE);
-    CreateMesh(&objMesh, "assets/meshes/plane.obj");
-    CreateMesh(&objHeadMesh, "assets/meshes/head.obj");
-    CreateMesh(&ct4Mesh, "assets/meshes/ct4.obj");
     CreateMesh(&knifeMesh, "assets/meshes/knife.obj");
 
     float camPitch = 0;
@@ -272,6 +229,11 @@ int main(void)
 
     Vector3 lightPosition = { 2.0, 0.0, 2.0 };
     float lightRadius = 1.0f;
+
+    Vector3 lightPositionSpot = { 0.0f, 3.0f, 0.0f };
+    Vector3 lightColorSpot = { 1.0f, 1.0f, 1.0f };
+    Vector3 lightDirSpot = { 0.0f, 1.0f, 0.0f };
+    float lightRadiusSpot = 2.0;
 
     // Render looks weird cause this isn't enabled, but its causing unexpected problems which I'll fix soon!
     glEnable(GL_DEPTH_TEST);
@@ -287,7 +249,7 @@ int main(void)
     {
         float time = glfwGetTime();
         timePrev = time;
-
+        camRot = FromEuler(-camPitch * DEG2RAD, -camYaw * DEG2RAD, 0.0f);
         Matrix camRotation = ToMatrix(FromEuler(camPitch * DEG2RAD, camYaw * DEG2RAD, 0.0f));
         Matrix camTranslation = Translate(cameraPos);
         //printf("Cam Rotation: \n", camRotation);
@@ -393,7 +355,7 @@ int main(void)
 
         Matrix world = MatrixIdentity();
         Matrix normal = MatrixIdentity();
-        Matrix view = LookAt(cameraPos, cameraPos - V3_FORWARD, V3_UP);
+        Matrix view = LookAt(cameraPos, cameraPos - Rotate(cameraDir, camRot), V3_UP);
         Matrix proj = projection == ORTHO ? Ortho(left, right, bottom, top, near, far) : Perspective(fov, SCREEN_ASPECT, near, far);
         Matrix mvp = MatrixIdentity();
         GLint u_world = -2;
@@ -409,62 +371,31 @@ int main(void)
         GLint u_lightRadius = -2;
         GLint u_lightPositionDir = -2;
         GLint u_lightRadiusDir = -2;
+        GLint u_cameraPositionSpot = -2;
+        GLint u_lightPositionSpot = -2;
+        GLint u_lightColorSpot = -2;
+        GLint u_lightDirSpot = -2;
+        GLint u_lightRadiusSpot = -2;
         
         switch (object + 5)
         {
         case 1:
-            shaderProgram = shaderNormals;
-            glUseProgram(shaderProgram);
-            world = MatrixIdentity();
-            //world = RotateY(100.0f * time * DEG2RAD);
-            mvp = world * view * proj;
-            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
-            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            DrawMesh(planeMesh);
             break;
 
         case 2:
-            shaderProgram = shaderTcoords;
-            //shaderProgram = shaderNormals;
-            glUseProgram(shaderProgram);
-            world = MatrixIdentity();
-            //world = RotateY(100.0f * time * DEG2RAD);
-            mvp = world * view * proj;
-            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
-            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            DrawMesh(objHeadMesh);
             break;
 
         case 3:
-            shaderProgram = shaderTexture;
-            glUseProgram(shaderProgram);
-            //world = Scale(2.0f, 2.0f, 2.0f);
-            world = MatrixIdentity();
-            mvp = world * view * proj;
-            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
-            u_tex = glGetUniformLocation(shaderProgram, "u_tex");
-            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            glUniform1i(u_tex, 0);
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, ct4Texture);
-            DrawMesh(ct4Mesh);
             break;
 
         case 4:
-            shaderProgram = shaderLines;
-            glUseProgram(shaderProgram);
-            glUniform1f(glGetUniformLocation(shaderProgram, "u_a"), a);
-            glLineWidth(2.5f);
-            glBindVertexArray(vaoLines);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, 4 * sizeof(Vector2), curr);
-            glDrawArrays(GL_LINE_LOOP, 0, 4);
             break;
 
         case 5:
             float rotationAmount = 90.0f * DEG2RAD;
             float planeValues = 20.0f;
-            view = view * camRotation;
-            Vector3 lightPosition = { 2.0 * sin(time), 1.0, 2.0 * cos(time) };
+            //view = view * camRotation;
+            Vector3 lightPosition = { 2.0 * sin(time), 0.0, 2.0 * cos(time) };
 
             shaderProgram = shaderUniformColor;
             glUseProgram(shaderProgram);
@@ -505,6 +436,11 @@ int main(void)
             u_lightRadius = glGetUniformLocation(shaderProgram, "u_lightRadius");
             u_lightPositionDir = glGetUniformLocation(shaderProgram, "u_lightPositionDir");
             u_lightRadiusDir = glGetUniformLocation(shaderProgram, "u_lightRadiusDir");
+            u_cameraPositionSpot = glGetUniformLocation(shaderProgram, "u_cameraPositionSpot");
+            u_lightPositionSpot = glGetUniformLocation(shaderProgram, "u_lightPositionSpot");
+            u_lightColorSpot = glGetUniformLocation(shaderProgram, "u_lightColorSpot");
+            u_lightRadiusSpot = glGetUniformLocation(shaderProgram, "u_lightRadiusSpot");
+            u_lightDirSpot = glGetUniformLocation(shaderProgram, "u_lightDirSpot");
             glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
             glUniformMatrix3fv(u_normal, 1, GL_FALSE, ToFloat9(normal).v);
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
@@ -514,6 +450,11 @@ int main(void)
             glUniform1f(u_lightRadius, lightRadius);
             glUniform3fv(u_lightPositionDir, 1, &lightPositionDir.x);
             glUniform1f(u_lightRadiusDir, lightRadiusDir);
+            glUniform3fv(u_lightPositionSpot, 1, &cameraPos.x);
+            glUniform3fv(u_lightPositionSpot, 1, &lightPositionSpot.x);
+            glUniform3fv(u_lightColorSpot, 1, &lightColorSpot.x);
+            glUniform3fv(u_lightDirSpot, 1, &lightDirSpot.x);
+            glUniform1f(u_lightRadiusSpot, u_lightRadiusSpot);
             glUniform1i(u_tex, 0);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, knifeTexture);
