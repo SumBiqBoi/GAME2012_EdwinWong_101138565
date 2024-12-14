@@ -80,12 +80,14 @@ int main(void)
 
     // Vertex shaders:
     GLuint vs = CreateShader(GL_VERTEX_SHADER, "./assets/shaders/default.vert");
+    GLuint vsSkybox = CreateShader(GL_VERTEX_SHADER, "./assets/shaders/skybox.vert");
     GLuint vsLines = CreateShader(GL_VERTEX_SHADER, "./assets/shaders/lines.vert");
     GLuint vsVertexPositionColor = CreateShader(GL_VERTEX_SHADER, "./assets/shaders/vertex_color.vert");
     GLuint vsColorBufferColor = CreateShader(GL_VERTEX_SHADER, "./assets/shaders/buffer_color.vert");
     
     // Fragment shaders:
     GLuint fsLines = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/lines.frag");
+    GLuint fsSkybox = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/skybox.frag");
     GLuint fsUniformColor = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/uniform_color.frag");
     GLuint fsVertexColor = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/vertex_color.frag");
     GLuint fsTcoords = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/tcoord_color.frag");
@@ -101,6 +103,7 @@ int main(void)
     GLuint shaderVertexPositionColor = CreateProgram(vsVertexPositionColor, fsVertexColor);
     GLuint shaderVertexBufferColor = CreateProgram(vsColorBufferColor, fsVertexColor);
     GLuint shaderLines = CreateProgram(vsLines, fsLines);
+    GLuint shaderSkybox = CreateProgram(vsSkybox, fsSkybox);
     GLuint shaderTcoords = CreateProgram(vs, fsTcoords);
     GLuint shaderNormals = CreateProgram(vs, fsNormals);
     GLuint shaderTexture = CreateProgram(vs, fsTexture);
@@ -143,7 +146,32 @@ int main(void)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tBackgroundWidth, tBackgroundHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, backgroundPixels);
     stbi_image_free(backgroundPixels);
     backgroundPixels = nullptr;
-
+    const char* skyBoxPath[6] =
+    {
+        "./assets/textures/skybox_x+.jpg",
+        "./assets/textures/skybox_x-.jpg",
+        "./assets/textures/skybox_y+.jpg",
+        "./assets/textures/skybox_y-.jpg",
+        "./assets/textures/skybox_z+.jpg",
+        "./assets/textures/skybox_z-.jpg"
+    };
+    GLuint skyBoxTexture = GL_NONE;
+    glGenTextures(1, &skyBoxTexture);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skyBoxTexture);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    stbi_set_flip_vertically_on_load(false);
+    for (int i = 0; i < 6; i++)
+    {
+        int w, h, c;
+        stbi_uc* pixels = stbi_load(skyBoxPath[i], &w, &h, &c, 0);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+        stbi_image_free(pixels);
+    }
+    stbi_set_flip_vertically_on_load(true);
     // Positions of our triangle's vertices (CCW winding-order)
     Vector3 positions[] =
     {
@@ -232,10 +260,11 @@ int main(void)
     bool imguiDemo = false;
     bool camToggle = false;
 
-    Mesh planeMesh, sphereMesh, knifeMesh;
+    Mesh planeMesh, sphereMesh, knifeMesh, cubeMesh;
     CreateMesh(&planeMesh, PLANE);
     CreateMesh(&sphereMesh, "assets/meshes/uvsphere.obj");
     CreateMesh(&knifeMesh, "assets/meshes/knife.obj");
+    CreateMesh(&cubeMesh, CUBE);
 
     float camPitch = 0;
     float camYaw = 0;
@@ -379,6 +408,7 @@ int main(void)
         GLint u_normal = -2;
         GLint u_mvp = -2;
         GLint u_tex = -2;
+        GLint u_cubemap = -2;
         GLuint shaderProgram = GL_NONE;
 
         // Light handle
@@ -392,6 +422,9 @@ int main(void)
         GLint u_lightColorSpot = -2;
         GLint u_lightDirSpot = -2;
         GLint u_lightRadiusSpot = -2;
+
+        Matrix rotationY = RotateY(100.0f * time * DEG2RAD);
+        Matrix rotationX = RotateX(100.0f * time * DEG2RAD);
         
         switch (object + 1)
         {
@@ -512,6 +545,17 @@ int main(void)
             break;
         }
         case 2:
+            shaderProgram = shaderSkybox;
+            glUseProgram(shaderProgram);
+            //view = rotationY;
+            mvp = world * view * proj;
+            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
+            u_cubemap = glGetUniformLocation(shaderProgram, "u_cubemap");
+            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
+            glUniform1i(u_cubemap, 0);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, skyBoxTexture);
+            DrawMesh(cubeMesh);
             break;
 
         case 3:

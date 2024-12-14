@@ -130,5 +130,17 @@
     <None Include="assets\shaders\textureWithPointLight.frag">
       <Filter>shaders</Filter>
     </None>
+    <None Include="assets\shaders\reflect.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="assets\shaders\refract.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="assets\shaders\skybox.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="assets\shaders\skybox.vert">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
