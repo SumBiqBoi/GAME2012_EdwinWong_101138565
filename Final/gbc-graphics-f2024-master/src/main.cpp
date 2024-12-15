@@ -465,10 +465,11 @@ int main(void)
             rotatedSpotLightPosition += lightPositionOrbit;
             Vector3 adjustedSpotLightDirection = Normalize(rotatedSpotLightPosition * -1);
 
+            Matrix reflectWorld = world;
+
             shaderProgram = shaderSkybox;
             glUseProgram(shaderProgram);
             Matrix viewSky = view;
-            Matrix viewSave = view;
             viewSky.m12 = viewSky.m13 = viewSky.m14 = 0.0f;
             mvp = world * viewSky * proj;
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
@@ -545,32 +546,8 @@ int main(void)
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
             DrawMesh(sphereMesh); // Draw orbit light source
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-            //shaderProgram = shaderTextureWithPoint;
-            //glUseProgram(shaderProgram);
-            //world = Scale(V3_ONE) * Translate(pointLightSpherePosition) * RotateZ(60 * DEG2RAD);
-            //normal = NormalMatrix(world);
-            //mvp = world * view * proj;
-            //u_world = glGetUniformLocation(shaderProgram, "u_world");
-            //u_normal = glGetUniformLocation(shaderProgram, "u_normal");
-            //u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
-            //u_tex = glGetUniformLocation(shaderProgram, "u_tex");
-            //u_cameraPositionPoint = glGetUniformLocation(shaderProgram, "u_cameraPositionPoint");
-            //u_lightPositionPoint = glGetUniformLocation(shaderProgram, "u_lightPositionPoint");
-            //u_lightColorPoint = glGetUniformLocation(shaderProgram, "u_lightColorPoint");
-            //u_lightRadiusPoint = glGetUniformLocation(shaderProgram, "u_lightRadiusPoint");
-            //glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
-            //glUniformMatrix3fv(u_normal, 1, GL_FALSE, ToFloat9(normal).v);
-            //glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            //glUniform3fv(u_lightPositionPoint, 1, &cameraPos.x);
-            //glUniform3fv(u_lightPositionPoint, 1, &lightPosition.x);
-            //glUniform3fv(u_lightColorPoint, 1, &lightColor.x);
-            //glUniform1f(u_lightRadiusPoint, lightRadius);
-            //glUniform1i(u_tex, 0);
-            //glActiveTexture(GL_TEXTURE0);
-            //glBindTexture(GL_TEXTURE_2D, backgroundTexture);
-            //DrawMesh(sphereMesh);
             
+            // Not sure why the spot light goes through the middle sphere
             shaderProgram = shaderUniformColor;
             glUseProgram(shaderProgram);
             world = Scale(V3_ONE) * Translate(rotatedSpotLightPosition);
@@ -582,22 +559,10 @@ int main(void)
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
             DrawMesh(sphereMesh); // Draw spot light source
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-            //shaderProgram = shaderTexture;
-            //glUseProgram(shaderProgram);
-            //world = Scale(V3_ONE) * Translate(spotLightSpherePosition) * RotateZ(90 * DEG2RAD);
-            //mvp = world * view * proj;
-            //u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
-            //u_tex = glGetUniformLocation(shaderProgram, "u_tex");
-            //glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            //glUniform1i(u_tex, 0);
-            //glActiveTexture(GL_TEXTURE0);
-            //glBindTexture(GL_TEXTURE_2D, backgroundTexture);
-            //DrawMesh(sphereMesh);
             
             shaderProgram = shaderRefract;
             glUseProgram(shaderProgram);
-            world = Scale(V3_ONE) * Translate(refractionSpherePosition) * RotateZ(150 * DEG2RAD);
+            world = Translate(refractionSpherePosition) * RotateZ(150 * DEG2RAD);
             mvp = world * view * proj;
             normal = Transpose(Invert(world));
             u_normal = glGetUniformLocation(shaderProgram, "u_normal");
@@ -613,15 +578,15 @@ int main(void)
 
             shaderProgram = shaderReflect;
             glUseProgram(shaderProgram);
-            world = Scale(V3_ONE) * Translate(reflectionSpherePosition) * RotateZ(120 * DEG2RAD);
-            mvp = world * view * proj;
-            normal = Transpose(Invert(world));
+            reflectWorld = Scale(V3_ONE) * Translate(reflectionSpherePosition) * RotateZ(120 * DEG2RAD);
+            mvp = reflectWorld * view * proj;
+            normal = Transpose(Invert(reflectWorld));
             u_cameraPositionPoint = glGetUniformLocation(shaderProgram, "u_cameraPositionPoint");
             u_normal = glGetUniformLocation(shaderProgram, "u_normal");
             u_world = glGetUniformLocation(shaderProgram, "u_world");
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
             glUniformMatrix3fv(u_normal, 1, GL_FALSE, ToFloat9(normal).v);
-            glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
+            glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(reflectWorld).v);
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
             glUniform3fv(u_cameraPositionPoint, 1, &cameraPos.x);
             DrawMesh(sphereMesh);
@@ -661,14 +626,15 @@ int main(void)
             world = Translate(1.0f, 0.0f, -2.0f);
             mvp = world * viewSky * proj;
             normal = Transpose(Invert(world));
-            u_cameraPositionPoint = glGetUniformLocation(shaderProgram, "u_cameraPositionPoint");
             u_normal = glGetUniformLocation(shaderProgram, "u_normal");
             u_world = glGetUniformLocation(shaderProgram, "u_world");
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
+            u_cameraPositionPoint = glGetUniformLocation(shaderProgram, "u_cameraPositionPoint");
             glUniformMatrix3fv(u_normal, 1, GL_FALSE, ToFloat9(normal).v);
             glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
             glUniform3fv(u_cameraPositionPoint, 1, &cameraPos.x);
+            glUniform1f(glGetUniformLocation(shaderProgram, "u_ratio"), 1.00f / refractiveIndex);
             DrawMesh(cubeMesh);
 
             break;
@@ -807,7 +773,7 @@ int main(void)
             ImGui::SliderFloat("Orbit Light Radius", &lightRadius, 0.25f, 100.0f);
             ImGui::SliderFloat3("Spot Light Position", &lightPositionSpot.x, -10.0f, 10.0f);
             ImGui::SliderFloat("Spot Light Radius", &lightRadiusSpot, 0.25f, 20.0f);
-            ImGui::SliderFloat("Refraction Index", &refractiveIndex, 0.5f, 5.0f);
+            ImGui::SliderFloat("Refraction Index", &refractiveIndex, 1.0f, 3.0f);
 
             ImGui::RadioButton("Orthographic", (int*)&projection, 0); ImGui::SameLine();
             ImGui::RadioButton("Perspective", (int*)&projection, 1);
