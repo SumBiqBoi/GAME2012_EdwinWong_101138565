@@ -81,48 +81,28 @@ int main(void)
     // Vertex shaders:
     GLuint vs = CreateShader(GL_VERTEX_SHADER, "./assets/shaders/default.vert");
     GLuint vsSkybox = CreateShader(GL_VERTEX_SHADER, "./assets/shaders/skybox.vert");
-    GLuint vsLines = CreateShader(GL_VERTEX_SHADER, "./assets/shaders/lines.vert");
-    GLuint vsVertexPositionColor = CreateShader(GL_VERTEX_SHADER, "./assets/shaders/vertex_color.vert");
-    GLuint vsColorBufferColor = CreateShader(GL_VERTEX_SHADER, "./assets/shaders/buffer_color.vert");
     GLuint vsReflect = CreateShader(GL_VERTEX_SHADER, "./assets/shaders/reflect.vert");
     
     // Fragment shaders:
-    GLuint fsLines = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/lines.frag");
-    GLuint fsSkybox = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/skybox.frag");
     GLuint fsUniformColor = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/uniform_color.frag");
-    GLuint fsVertexColor = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/vertex_color.frag");
+    GLuint fsSkybox = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/skybox.frag");
     GLuint fsTcoords = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/tcoord_color.frag");
     GLuint fsNormals = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/normal_color.frag");
-    GLuint fsTexture = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/texture_color.frag");
-    GLuint fsTextureWithPhong = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/textureWithPhong_color.frag");
     GLuint fsTextureWithLight = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/textureWithLight.frag");
-    GLuint fsColor = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/grey_color.frag");
-    GLuint fsPhong = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/phong.frag");
     GLuint fsRefract = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/refract.frag");
     GLuint fsReflect = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/reflect.frag");
     
     // Shader programs:
     GLuint shaderUniformColor = CreateProgram(vs, fsUniformColor);
-    GLuint shaderVertexPositionColor = CreateProgram(vsVertexPositionColor, fsVertexColor);
-    GLuint shaderVertexBufferColor = CreateProgram(vsColorBufferColor, fsVertexColor);
-    GLuint shaderLines = CreateProgram(vsLines, fsLines);
     GLuint shaderSkybox = CreateProgram(vsSkybox, fsSkybox);
     GLuint shaderTcoords = CreateProgram(vs, fsTcoords);
     GLuint shaderNormals = CreateProgram(vs, fsNormals);
-    GLuint shaderTexture = CreateProgram(vs, fsTexture);
-    GLuint shaderTextureWithPhong = CreateProgram(vs, fsTextureWithPhong);
     GLuint shaderTextureWithPoint = CreateProgram(vs, fsTextureWithLight);
-    GLuint shaderColor = CreateProgram(vs, fsColor);
-    GLuint shaderPhong = CreateProgram(vs, fsPhong);
     GLuint shaderRefract = CreateProgram(vsReflect, fsRefract);
     GLuint shaderReflect = CreateProgram(vsReflect, fsReflect);
 
     // Step 1: Load image from disk to CPU
     stbi_set_flip_vertically_on_load(true);
-    int tKnifeWidth = 0;
-    int tKnifeHeight = 0;
-    int tKnifeChannels = 0;
-    stbi_uc* knifePixels = stbi_load("./assets/textures/knife_colour.jpg", &tKnifeWidth, &tKnifeHeight, &tKnifeChannels, 0);
 
     int tBackgroundWidth = 0;
     int tBackgroundHeight = 0;
@@ -130,16 +110,6 @@ int main(void)
     stbi_uc* backgroundPixels = stbi_load("./assets/textures/water_Color.jpg", &tBackgroundWidth, &tBackgroundHeight, &tBackgroundChannels, 0);
 
     // Step 2: Upload image from CPU to GPU
-    GLuint knifeTexture = GL_NONE;
-    glGenTextures(1, &knifeTexture);
-    glBindTexture(GL_TEXTURE_2D, knifeTexture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tKnifeWidth, tKnifeHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, knifePixels);
-    stbi_image_free(knifePixels);
-    knifePixels = nullptr;
 
     GLuint backgroundTexture = GL_NONE;
     glGenTextures(1, &backgroundTexture);
@@ -267,17 +237,14 @@ int main(void)
     bool imguiDemo = false;
     bool camToggle = false;
 
-    Mesh planeMesh, sphereMesh, knifeMesh, cubeMesh;
-    CreateMesh(&planeMesh, PLANE);
+    Mesh sphereMesh, cubeMesh;
     CreateMesh(&sphereMesh, "assets/meshes/uvsphere.obj");
-    CreateMesh(&knifeMesh, "assets/meshes/knife.obj");
     CreateMesh(&cubeMesh, CUBE);
 
     float camPitch = 0;
     float camYaw = 0;
     float camSpeed = 10.0f;
 
-    Vector3 lightPositionDir = { 10.0f,10.0f,10.0f };
     Vector3 lightColor = { 1.0f, 1.0f, 1.0f };
 
     Vector3 lightPositionOrbit = { 0.0, 0.0, 0.0 };
@@ -600,6 +567,7 @@ int main(void)
             break;
         }
         case 2:
+            // Only for testing skybox, refraction, reflection
             shaderProgram = shaderSkybox;
             glUseProgram(shaderProgram);
             Matrix viewSky = view;
@@ -652,117 +620,6 @@ int main(void)
             break;
 
         case 5:
-            float rotationAmount = 90.0f * DEG2RAD;
-            float planeValues = 20.0f;
-            Vector3 lightPosition = { 2.0 * sin(time), 0.0, 2.0 * cos(time) };
-            lightPosition += lightPositionOrbit;
-
-            shaderProgram = shaderUniformColor;
-            glUseProgram(shaderProgram);
-            world = Scale(V3_ONE) * Translate(lightPositionDir);
-            mvp = world * view * proj;
-            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
-            u_color = glGetUniformLocation(shaderProgram, "u_color");
-            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            glUniform3fv(u_color, 1, &lightColor.x);
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            DrawMesh(sphereMesh); // Draw directional light source
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-            shaderProgram = shaderUniformColor;
-            glUseProgram(shaderProgram);
-            world = Scale(V3_ONE * lightRadius) * Translate(lightPosition);
-            mvp = world * view * proj;
-            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
-            u_color = glGetUniformLocation(shaderProgram, "u_color");
-            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            glUniform3fv(u_color, 1, &lightColor.x);
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            DrawMesh(sphereMesh); // Draw orbit light source
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-            shaderProgram = shaderUniformColor;
-            glUseProgram(shaderProgram);
-            world = Scale(V3_ONE) * Translate(lightPositionSpot);
-            mvp = world * view * proj;
-            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
-            u_color = glGetUniformLocation(shaderProgram, "u_color");
-            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            glUniform3fv(u_color, 1, &lightColor.x);
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            DrawMesh(sphereMesh); // Draw spot light source
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-            shaderProgram = shaderTextureWithPhong;
-            glUseProgram(shaderProgram);
-            world = Translate(0.0f, 0.0f, 0.0f);
-            mvp = world * view * proj;
-            normal = Transpose(Invert(world));
-            u_world = glGetUniformLocation(shaderProgram, "u_world");
-            u_normal = glGetUniformLocation(shaderProgram, "u_normal");
-            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
-            u_tex = glGetUniformLocation(shaderProgram, "u_tex");
-            u_cameraPositionPoint = glGetUniformLocation(shaderProgram, "u_cameraPosition");
-            u_lightPositionPoint = glGetUniformLocation(shaderProgram, "u_lightPosition");
-            u_lightColorPoint = glGetUniformLocation(shaderProgram, "u_lightColor");
-            u_lightRadiusPoint = glGetUniformLocation(shaderProgram, "u_lightRadius");
-            u_lightPositionDir = glGetUniformLocation(shaderProgram, "u_lightPositionDir");
-            //u_cameraPositionSpot = glGetUniformLocation(shaderProgram, "u_cameraPositionSpot");
-            u_lightPositionSpot = glGetUniformLocation(shaderProgram, "u_lightPositionSpot");
-            u_lightColorSpot = glGetUniformLocation(shaderProgram, "u_lightColorSpot");
-            u_lightRadiusSpot = glGetUniformLocation(shaderProgram, "u_lightRadiusSpot");
-            u_lightDirSpot = glGetUniformLocation(shaderProgram, "u_lightDirSpot");
-            glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
-            glUniformMatrix3fv(u_normal, 1, GL_FALSE, ToFloat9(normal).v);
-            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            glUniform3fv(u_lightPositionPoint, 1, &cameraPos.x);
-            glUniform3fv(u_lightPositionPoint, 1, &lightPosition.x);
-            glUniform3fv(u_lightColorPoint, 1, &lightColor.x);
-            glUniform1f(u_lightRadiusPoint, lightRadius);
-            glUniform3fv(u_lightPositionDir, 1, &lightPositionDir.x);
-            glUniform3fv(u_lightPositionSpot, 1, &cameraPos.x);
-            glUniform3fv(u_lightPositionSpot, 1, &lightPositionSpot.x);
-            glUniform3fv(u_lightColorSpot, 1, &lightColorSpot.x);
-            glUniform3fv(u_lightDirSpot, 1, &lightDirInvertedSpot.x);
-            glUniform1f(u_lightRadiusSpot, u_lightRadiusSpot);
-            glUniform1i(u_tex, 0);
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, knifeTexture);
-            DrawMesh(knifeMesh); // Draw knife mesh
-
-            shaderProgram = shaderColor;
-            glUseProgram(shaderProgram);
-            world = Scale(planeValues, planeValues, planeValues) * RotateX(rotationAmount) * Translate(-planeValues / 2, -1.5f, -planeValues / 2);
-            normal = NormalMatrix(world);
-            mvp = world * view * proj;
-            u_world = glGetUniformLocation(shaderProgram, "u_world");
-            u_normal = glGetUniformLocation(shaderProgram, "u_normal");
-            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
-            u_cameraPositionPoint = glGetUniformLocation(shaderProgram, "u_cameraPosition");
-            u_lightPositionPoint = glGetUniformLocation(shaderProgram, "u_lightPosition");
-            u_lightColorPoint = glGetUniformLocation(shaderProgram, "u_lightColor");
-            u_lightRadiusPoint = glGetUniformLocation(shaderProgram, "u_lightRadius");
-            //u_lightPositionDir = glGetUniformLocation(shaderProgram, "u_lightPositionDir");
-            //u_cameraPositionSpot = glGetUniformLocation(shaderProgram, "u_cameraPositionSpot");
-            //u_lightPositionSpot = glGetUniformLocation(shaderProgram, "u_lightPositionSpot");
-            //u_lightColorSpot = glGetUniformLocation(shaderProgram, "u_lightColorSpot");
-            //u_lightRadiusSpot = glGetUniformLocation(shaderProgram, "u_lightRadiusSpot");
-            //u_lightDirSpot = glGetUniformLocation(shaderProgram, "u_lightDirSpot");
-            glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
-            glUniformMatrix3fv(u_normal, 1, GL_FALSE, ToFloat9(normal).v);
-            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            glUniform3fv(u_lightPositionPoint, 1, &cameraPos.x);
-            glUniform3fv(u_lightPositionPoint, 1, &lightPosition.x);
-            glUniform3fv(u_lightColorPoint, 1, &lightColor.x);
-            glUniform1f(u_lightRadiusPoint, lightRadius);
-            //glUniform3fv(u_lightPositionDir, 1, &lightPositionDir.x);
-            //glUniform3fv(u_lightPositionSpot, 1, &cameraPos.x);
-            //glUniform3fv(u_lightPositionSpot, 1, &lightPositionSpot.x);
-            //glUniform3fv(u_lightColorSpot, 1, &lightColorSpot.x);
-            //glUniform3fv(u_lightDirSpot, 1, &lightDirSpot.x);
-            //glUniform1f(u_lightRadiusSpot, lightRadiusSpot);
-            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            DrawMesh(planeMesh); // Draw plane
             break;
         }
         
@@ -774,9 +631,8 @@ int main(void)
         else
         {
             ImGui::SliderFloat3("Camera Position", &cameraPos.x, -10.0f, 10.0f);
-            ImGui::SliderFloat3("Direction Light Position", &lightPositionDir.x, -10.0f, 10.0f);
-            ImGui::SliderFloat3("Orbit Light Position", &lightPositionOrbit.x, -10.0f, 10.0f);
-            ImGui::SliderFloat("Orbit Light Radius", &lightRadius, 0.25f, 100.0f);
+            ImGui::SliderFloat3("Point Light Position", &lightPositionOrbit.x, -10.0f, 10.0f);
+            ImGui::SliderFloat("Point Light Radius", &lightRadius, 0.25f, 20.0f);
             ImGui::SliderFloat3("Spot Light Position", &lightPositionSpot.x, -10.0f, 10.0f);
             ImGui::SliderFloat("Spot Light Radius", &lightRadiusSpot, 0.25f, 20.0f);
             ImGui::SliderFloat("Refraction Index", &refractiveIndex, 1.0f, 3.0f);

@@ -88,46 +88,16 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="assets\shaders\buffer_color.vert">
-      <Filter>shaders</Filter>
-    </None>
     <None Include="assets\shaders\default.vert">
-      <Filter>shaders</Filter>
-    </None>
-    <None Include="assets\shaders\grey_color.frag">
-      <Filter>shaders</Filter>
-    </None>
-    <None Include="assets\shaders\lines.frag">
-      <Filter>shaders</Filter>
-    </None>
-    <None Include="assets\shaders\lines.vert">
       <Filter>shaders</Filter>
     </None>
     <None Include="assets\shaders\normal_color.frag">
       <Filter>shaders</Filter>
     </None>
-    <None Include="assets\shaders\phong.frag">
-      <Filter>shaders</Filter>
-    </None>
     <None Include="assets\shaders\tcoord_color.frag">
       <Filter>shaders</Filter>
     </None>
-    <None Include="assets\shaders\texture_color.frag">
-      <Filter>shaders</Filter>
-    </None>
-    <None Include="assets\shaders\textureWithPhong_color.frag">
-      <Filter>shaders</Filter>
-    </None>
     <None Include="assets\shaders\uniform_color.frag">
-      <Filter>shaders</Filter>
-    </None>
-    <None Include="assets\shaders\vertex_color.frag">
-      <Filter>shaders</Filter>
-    </None>
-    <None Include="assets\shaders\vertex_color.vert">
-      <Filter>shaders</Filter>
-    </None>
-    <None Include="assets\shaders\textureWithPointLight.frag">
       <Filter>shaders</Filter>
     </None>
     <None Include="assets\shaders\reflect.frag">
