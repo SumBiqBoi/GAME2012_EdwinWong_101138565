@@ -62,8 +62,8 @@ void main()
     lightingSpot *= intensity;
 
     // Texture scrolling
-    vec2 textureScroll = vec2(u_tex.x + u_tex_scrolling, u_tex.y)
+    vec2 textureScroll = vec2(tcoord.x + u_tex_scrolling, tcoord.y);
 
     vec3 result = lighting + lightingSpot;
-    FragColor = vec4(result * texture(u_tex.x, textureScroll, tcoord).rgb, 1.0);
+    FragColor = vec4(result * texture(u_tex, textureScroll).rgb, 1.0);
 }

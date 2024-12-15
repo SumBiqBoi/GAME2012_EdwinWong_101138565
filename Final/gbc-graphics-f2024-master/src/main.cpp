@@ -95,7 +95,7 @@ int main(void)
     GLuint fsNormals = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/normal_color.frag");
     GLuint fsTexture = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/texture_color.frag");
     GLuint fsTextureWithPhong = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/textureWithPhong_color.frag");
-    GLuint fsTextureWithPoint = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/textureWithPointLight.frag");
+    GLuint fsTextureWithLight = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/textureWithLight.frag");
     GLuint fsColor = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/grey_color.frag");
     GLuint fsPhong = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/phong.frag");
     GLuint fsRefract = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/refract.frag");
@@ -111,7 +111,7 @@ int main(void)
     GLuint shaderNormals = CreateProgram(vs, fsNormals);
     GLuint shaderTexture = CreateProgram(vs, fsTexture);
     GLuint shaderTextureWithPhong = CreateProgram(vs, fsTextureWithPhong);
-    GLuint shaderTextureWithPoint = CreateProgram(vs, fsTextureWithPoint);
+    GLuint shaderTextureWithPoint = CreateProgram(vs, fsTextureWithLight);
     GLuint shaderColor = CreateProgram(vs, fsColor);
     GLuint shaderPhong = CreateProgram(vs, fsPhong);
     GLuint shaderRefract = CreateProgram(vsReflect, fsRefract);
@@ -144,8 +144,8 @@ int main(void)
     GLuint backgroundTexture = GL_NONE;
     glGenTextures(1, &backgroundTexture);
     glBindTexture(GL_TEXTURE_2D, backgroundTexture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tBackgroundWidth, tBackgroundHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, backgroundPixels);
@@ -313,6 +313,8 @@ int main(void)
         float camDelta = camSpeed * dt;
         Matrix camMatrix = camRotation * camTranslation;
 
+        float texScrolling = time / 8;
+
         pmx = mx; pmy = my;
         glfwGetCursorPos(window, &mx, &my);
         Vector2 mouseDelta = { mx - pmx, my - pmy };
@@ -430,6 +432,7 @@ int main(void)
         GLint u_lightColorSpot = -2;
         GLint u_lightDirSpot = -2;
         GLint u_lightRadiusSpot = -2;
+        GLint u_tex_scrolling = -2;
 
         Matrix rotationY = RotateY(100.0f * time * DEG2RAD);
         Matrix rotationX = RotateX(100.0f * time * DEG2RAD);
@@ -447,10 +450,10 @@ int main(void)
             Vector3 pointLightSpherePosition = { 1.5 * sin(time + -14.66), 0.0, 1.5 * cos(time + -14.66) };
             pointLightSpherePosition += lightPositionOrbit;
 
-            Vector3 spotLightSpherePosition = { 1.5 * sin(time + -36.65), 0.0, 1.5 * cos(time + -36.65) };
+            Vector3 spotLightSpherePosition = { 1.5 * sin(time + -29.32), 0.0, 1.5 * cos(time + -29.32) };
             spotLightSpherePosition += lightPositionOrbit;
 
-            Vector3 refractionSpherePosition = { 1.5 * sin(time + -29.32), 0.0, 1.5 * cos(time + -29.32) };
+            Vector3 refractionSpherePosition = { 1.5 * sin(time + -36.65), 0.0, 1.5 * cos(time + -36.65) };
             refractionSpherePosition += lightPositionOrbit;
 
             Vector3 reflectionSpherePosition = { 1.5 * sin(time + -21.99), 0.0, 1.5 * cos(time + -21.99) };
@@ -460,7 +463,7 @@ int main(void)
             Vector3 rotatedPointLightPosition = rotationMatrixZPoint * pointLightSpherePosition;
             rotatedPointLightPosition += lightPositionOrbit;
 
-            Matrix rotationMatrixZSpot = RotateZ(90 * DEG2RAD);
+            Matrix rotationMatrixZSpot = RotateZ(150 * DEG2RAD);
             Vector3 rotatedSpotLightPosition = rotationMatrixZSpot * spotLightSpherePosition;
             rotatedSpotLightPosition += lightPositionOrbit;
             Vector3 adjustedSpotLightDirection = Normalize(rotatedSpotLightPosition * -1);
@@ -499,6 +502,7 @@ int main(void)
             u_lightColorSpot = glGetUniformLocation(shaderProgram, "u_lightColorSpot");
             u_lightRadiusSpot = glGetUniformLocation(shaderProgram, "u_lightRadiusSpot");
             u_lightDirSpot = glGetUniformLocation(shaderProgram, "u_lightDirSpot");
+            u_tex_scrolling = glGetUniformLocation(shaderProgram, "u_tex_scrolling");
             glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
             glUniformMatrix3fv(u_normal, 1, GL_FALSE, ToFloat9(normal).v);
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
@@ -511,8 +515,10 @@ int main(void)
             glUniform3fv(u_lightColorSpot, 1, &lightColorSpot.x);
             glUniform3fv(u_lightDirSpot, 1, &adjustedSpotLightDirection.x);
             glUniform1f(u_lightRadiusSpot, lightRadiusSpot);
+            glUniform1f(u_tex_scrolling, texScrolling);
             glUniform1i(u_tex, 0);
             glActiveTexture(GL_TEXTURE0);
+            
             glBindTexture(GL_TEXTURE_2D, backgroundTexture);
             DrawMesh(sphereMesh);
 
@@ -562,7 +568,7 @@ int main(void)
             
             shaderProgram = shaderRefract;
             glUseProgram(shaderProgram);
-            world = Translate(refractionSpherePosition) * RotateZ(150 * DEG2RAD);
+            world = Translate(refractionSpherePosition) * RotateZ(90 * DEG2RAD);
             mvp = world * view * proj;
             normal = Transpose(Invert(world));
             u_normal = glGetUniformLocation(shaderProgram, "u_normal");
