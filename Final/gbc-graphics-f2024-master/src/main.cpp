@@ -408,6 +408,7 @@ int main(void)
         {
         case 1:
         {
+            // Translates the positions of each sphere
             Vector3 tcoordsSpherePosition = { 1.5 * sin(time), 0.0, 1.5 * cos(time) };
             tcoordsSpherePosition += lightPositionOrbit;
 
@@ -426,17 +427,21 @@ int main(void)
             Vector3 reflectionSpherePosition = { 1.5 * sin(time + -21.99), 0.0, 1.5 * cos(time + -21.99) };
             reflectionSpherePosition += lightPositionOrbit;
 
+            // Translates and Rotates the Point Light
             Matrix rotationMatrixZPoint = RotateZ(60 * DEG2RAD);
             Vector3 rotatedPointLightPosition = rotationMatrixZPoint * pointLightSpherePosition;
             rotatedPointLightPosition += lightPositionOrbit;
 
+            // Translates, Rotates and points the Spot Light
             Matrix rotationMatrixZSpot = RotateZ(150 * DEG2RAD);
             Vector3 rotatedSpotLightPosition = rotationMatrixZSpot * spotLightSpherePosition;
             rotatedSpotLightPosition += lightPositionOrbit;
             Vector3 adjustedSpotLightDirection = Normalize(rotatedSpotLightPosition * -1);
 
+            // Retains the world before it gets overridden
             Matrix reflectWorld = world;
 
+            // Draws the skybox
             shaderProgram = shaderSkybox;
             glUseProgram(shaderProgram);
             Matrix viewSky = view;
@@ -449,6 +454,7 @@ int main(void)
             DrawMesh(cubeMesh);
             glDepthMask(GL_TRUE);
 
+            // Draws the center sphere with moving texture and light info
             shaderProgram = shaderTextureWithPoint;
             //shaderProgram = shaderNormals;
             glUseProgram(shaderProgram);
@@ -485,10 +491,10 @@ int main(void)
             glUniform1f(u_tex_scrolling, texScrolling);
             glUniform1i(u_tex, 0);
             glActiveTexture(GL_TEXTURE0);
-            
             glBindTexture(GL_TEXTURE_2D, backgroundTexture);
             DrawMesh(sphereMesh);
 
+            // Draws the sphere mesh with texture coordinates
             shaderProgram = shaderTcoords;
             glUseProgram(shaderProgram);
             world = Scale(V3_ONE) * Translate(tcoordsSpherePosition);
@@ -497,6 +503,7 @@ int main(void)
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
             DrawMesh(sphereMesh);
             
+            // Draws the sphere mesh with normals
             shaderProgram = shaderNormals;
             glUseProgram(shaderProgram);
             world = Scale(V3_ONE) * Translate(normalSpherePosition) * RotateZ(30 * DEG2RAD);
@@ -508,6 +515,7 @@ int main(void)
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
             DrawMesh(sphereMesh);
             
+            // Draws the Point Light with sphere outline
             shaderProgram = shaderUniformColor;
             glUseProgram(shaderProgram);
             world = Scale(V3_ONE * lightRadius) * Translate(pointLightSpherePosition) * RotateZ(60 * DEG2RAD);
@@ -520,6 +528,7 @@ int main(void)
             DrawMesh(sphereMesh); // Draw orbit light source
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
             
+            // Draws the Spot Light with sphere outline
             // Not sure why the spot light goes through the middle sphere
             shaderProgram = shaderUniformColor;
             glUseProgram(shaderProgram);
@@ -533,6 +542,7 @@ int main(void)
             DrawMesh(sphereMesh); // Draw spot light source
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
             
+            // Draws a sphere that Refracts the skybox
             shaderProgram = shaderRefract;
             glUseProgram(shaderProgram);
             world = Translate(refractionSpherePosition) * RotateZ(90 * DEG2RAD);
@@ -549,6 +559,7 @@ int main(void)
             glUniform1f(glGetUniformLocation(shaderProgram, "u_ratio"), 1.00f / refractiveIndex);
             DrawMesh(sphereMesh);
 
+            // Draws a sphere that Reflects the skybox
             shaderProgram = shaderReflect;
             glUseProgram(shaderProgram);
             reflectWorld = Scale(V3_ONE) * Translate(reflectionSpherePosition) * RotateZ(120 * DEG2RAD);
@@ -580,6 +591,7 @@ int main(void)
             DrawMesh(cubeMesh);
             glDepthMask(GL_TRUE);
 
+            // Reflect cube
             shaderProgram = shaderReflect;
             glUseProgram(shaderProgram);
             world = Translate(-1.0f, 0.0f, -2.0f);
@@ -595,6 +607,7 @@ int main(void)
             glUniform3fv(u_cameraPositionPoint, 1, &cameraPos.x);
             DrawMesh(cubeMesh);
 
+            // Refract cube
             shaderProgram = shaderRefract;
             glUseProgram(shaderProgram);
             world = Translate(1.0f, 0.0f, -2.0f);
