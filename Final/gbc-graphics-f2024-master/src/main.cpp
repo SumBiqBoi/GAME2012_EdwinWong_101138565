@@ -84,6 +84,7 @@ int main(void)
     GLuint vsLines = CreateShader(GL_VERTEX_SHADER, "./assets/shaders/lines.vert");
     GLuint vsVertexPositionColor = CreateShader(GL_VERTEX_SHADER, "./assets/shaders/vertex_color.vert");
     GLuint vsColorBufferColor = CreateShader(GL_VERTEX_SHADER, "./assets/shaders/buffer_color.vert");
+    GLuint vsReflect = CreateShader(GL_VERTEX_SHADER, "./assets/shaders/reflect.vert");
     
     // Fragment shaders:
     GLuint fsLines = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/lines.frag");
@@ -97,6 +98,8 @@ int main(void)
     GLuint fsTextureWithPoint = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/textureWithPointLight.frag");
     GLuint fsColor = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/grey_color.frag");
     GLuint fsPhong = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/phong.frag");
+    GLuint fsRefract = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/refract.frag");
+    GLuint fsReflect = CreateShader(GL_FRAGMENT_SHADER, "./assets/shaders/reflect.frag");
     
     // Shader programs:
     GLuint shaderUniformColor = CreateProgram(vs, fsUniformColor);
@@ -111,6 +114,8 @@ int main(void)
     GLuint shaderTextureWithPoint = CreateProgram(vs, fsTextureWithPoint);
     GLuint shaderColor = CreateProgram(vs, fsColor);
     GLuint shaderPhong = CreateProgram(vs, fsPhong);
+    GLuint shaderRefract = CreateProgram(vsReflect, fsRefract);
+    GLuint shaderReflect = CreateProgram(vsReflect, fsReflect);
 
     // Step 1: Load image from disk to CPU
     stbi_set_flip_vertically_on_load(true);
@@ -256,6 +261,8 @@ int main(void)
     float near = 0.01f; // 1.0 for testing purposes. Usually 0.1f or 0.01f
     float far = 10.0f;
 
+    float refractiveIndex = 1.52f;
+
     // Whether we render the imgui demo widgets
     bool imguiDemo = false;
     bool camToggle = false;
@@ -278,8 +285,9 @@ int main(void)
 
     Vector3 lightPositionSpot = { 0.0f, 3.0f, 0.0f };
     Vector3 lightColorSpot = { 1.0f, 1.0f, 1.0f };
-    Vector3 lightDirSpot = { 0.0f, 1.0f, 0.0f };
-    float lightRadiusSpot = 2.0;
+    Vector3 lightDirInvertedSpot = { 0.0f, 1.0f, 0.0f };
+    Vector3 lightDirSpot = { 0.0f, -1.0f, 0.0f };
+    float lightRadiusSpot = 12.0;
 
     // Render looks weird cause this isn't enabled, but its causing unexpected problems which I'll fix soon!
     glEnable(GL_DEPTH_TEST);
@@ -409,6 +417,7 @@ int main(void)
         GLint u_mvp = -2;
         GLint u_tex = -2;
         GLint u_cubemap = -2;
+        GLint u_ratio = -2;
         GLuint shaderProgram = GL_NONE;
 
         // Light handle
@@ -417,7 +426,6 @@ int main(void)
         GLint u_lightColorPoint = -2;
         GLint u_lightRadiusPoint = -2;
         GLint u_lightPositionDir = -2;
-        GLint u_cameraPositionSpot = -2;
         GLint u_lightPositionSpot = -2;
         GLint u_lightColorSpot = -2;
         GLint u_lightDirSpot = -2;
@@ -448,11 +456,30 @@ int main(void)
             Vector3 reflectionSpherePosition = { 1.5 * sin(time + -21.99), 0.0, 1.5 * cos(time + -21.99) };
             reflectionSpherePosition += lightPositionOrbit;
 
-            Matrix rotationMatrixZ = RotateZ(60 * DEG2RAD);
-            Vector3 rotatedPointLightPosition = rotationMatrixZ * pointLightSpherePosition;
+            Matrix rotationMatrixZPoint = RotateZ(60 * DEG2RAD);
+            Vector3 rotatedPointLightPosition = rotationMatrixZPoint * pointLightSpherePosition;
             rotatedPointLightPosition += lightPositionOrbit;
 
+            Matrix rotationMatrixZSpot = RotateZ(90 * DEG2RAD);
+            Vector3 rotatedSpotLightPosition = rotationMatrixZSpot * spotLightSpherePosition;
+            rotatedSpotLightPosition += lightPositionOrbit;
+            Vector3 adjustedSpotLightDirection = Normalize(rotatedSpotLightPosition * -1);
+
+            shaderProgram = shaderSkybox;
+            glUseProgram(shaderProgram);
+            Matrix viewSky = view;
+            Matrix viewSave = view;
+            viewSky.m12 = viewSky.m13 = viewSky.m14 = 0.0f;
+            mvp = world * viewSky * proj;
+            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
+            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, skyBoxTexture);
+            glDepthMask(GL_FALSE);
+            DrawMesh(cubeMesh);
+            glDepthMask(GL_TRUE);
+
             shaderProgram = shaderTextureWithPoint;
+            //shaderProgram = shaderNormals;
             glUseProgram(shaderProgram);
             world = Translate(0.0f, 0.0f, 0.0f);
             normal = NormalMatrix(world);
@@ -467,6 +494,10 @@ int main(void)
             u_lightPositionPoint = glGetUniformLocation(shaderProgram, "u_lightPositionPoint");
             u_lightColorPoint = glGetUniformLocation(shaderProgram, "u_lightColorPoint");
             u_lightRadiusPoint = glGetUniformLocation(shaderProgram, "u_lightRadiusPoint");
+            u_lightPositionSpot = glGetUniformLocation(shaderProgram, "u_lightPositionSpot");
+            u_lightColorSpot = glGetUniformLocation(shaderProgram, "u_lightColorSpot");
+            u_lightRadiusSpot = glGetUniformLocation(shaderProgram, "u_lightRadiusSpot");
+            u_lightDirSpot = glGetUniformLocation(shaderProgram, "u_lightDirSpot");
             glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
             glUniformMatrix3fv(u_normal, 1, GL_FALSE, ToFloat9(normal).v);
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
@@ -474,6 +505,11 @@ int main(void)
             glUniform3fv(u_lightPositionPoint, 1, &rotatedPointLightPosition.x);
             glUniform3fv(u_lightColorPoint, 1, &lightColor.x);
             glUniform1f(u_lightRadiusPoint, lightRadius);
+            glUniform3fv(u_lightPositionSpot, 1, &cameraPos.x);
+            glUniform3fv(u_lightPositionSpot, 1, &rotatedSpotLightPosition.x);
+            glUniform3fv(u_lightColorSpot, 1, &lightColorSpot.x);
+            glUniform3fv(u_lightDirSpot, 1, &adjustedSpotLightDirection.x);
+            glUniform1f(u_lightRadiusSpot, lightRadiusSpot);
             glUniform1i(u_tex, 0);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, backgroundTexture);
@@ -498,7 +534,6 @@ int main(void)
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
             DrawMesh(sphereMesh);
             
-
             shaderProgram = shaderUniformColor;
             glUseProgram(shaderProgram);
             world = Scale(V3_ONE * lightRadius) * Translate(pointLightSpherePosition) * RotateZ(60 * DEG2RAD);
@@ -536,40 +571,59 @@ int main(void)
             //glBindTexture(GL_TEXTURE_2D, backgroundTexture);
             //DrawMesh(sphereMesh);
             
-            shaderProgram = shaderTexture;
+            shaderProgram = shaderUniformColor;
             glUseProgram(shaderProgram);
-            world = Scale(V3_ONE) * Translate(spotLightSpherePosition) * RotateZ(90 * DEG2RAD);
+            world = Scale(V3_ONE) * Translate(rotatedSpotLightPosition);
             mvp = world * view * proj;
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
-            u_tex = glGetUniformLocation(shaderProgram, "u_tex");
+            u_color = glGetUniformLocation(shaderProgram, "u_color");
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            glUniform1i(u_tex, 0);
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, backgroundTexture);
-            DrawMesh(sphereMesh);
+            glUniform3fv(u_color, 1, &lightColor.x);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            DrawMesh(sphereMesh); // Draw spot light source
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+            //shaderProgram = shaderTexture;
+            //glUseProgram(shaderProgram);
+            //world = Scale(V3_ONE) * Translate(spotLightSpherePosition) * RotateZ(90 * DEG2RAD);
+            //mvp = world * view * proj;
+            //u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
+            //u_tex = glGetUniformLocation(shaderProgram, "u_tex");
+            //glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
+            //glUniform1i(u_tex, 0);
+            //glActiveTexture(GL_TEXTURE0);
+            //glBindTexture(GL_TEXTURE_2D, backgroundTexture);
+            //DrawMesh(sphereMesh);
             
-            shaderProgram = shaderTexture;
+            shaderProgram = shaderRefract;
             glUseProgram(shaderProgram);
-            world = Scale(V3_ONE) * Translate(refractionSpherePosition) * RotateZ(120 * DEG2RAD);
+            world = Scale(V3_ONE) * Translate(refractionSpherePosition) * RotateZ(150 * DEG2RAD);
             mvp = world * view * proj;
+            normal = Transpose(Invert(world));
+            u_normal = glGetUniformLocation(shaderProgram, "u_normal");
+            u_world = glGetUniformLocation(shaderProgram, "u_world");
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
-            u_tex = glGetUniformLocation(shaderProgram, "u_tex");
+            u_cameraPositionPoint = glGetUniformLocation(shaderProgram, "u_cameraPositionPoint");
+            glUniformMatrix3fv(u_normal, 1, GL_FALSE, ToFloat9(normal).v);
+            glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            glUniform1i(u_tex, 0);
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, backgroundTexture);
+            glUniform3fv(u_cameraPositionPoint, 1, &cameraPos.x);
+            glUniform1f(glGetUniformLocation(shaderProgram, "u_ratio"), 1.00f / refractiveIndex);
             DrawMesh(sphereMesh);
-            
-            shaderProgram = shaderTexture;
+
+            shaderProgram = shaderReflect;
             glUseProgram(shaderProgram);
-            world = Scale(V3_ONE) * Translate(reflectionSpherePosition) * RotateZ(150 * DEG2RAD);
+            world = Scale(V3_ONE) * Translate(reflectionSpherePosition) * RotateZ(120 * DEG2RAD);
             mvp = world * view * proj;
+            normal = Transpose(Invert(world));
+            u_cameraPositionPoint = glGetUniformLocation(shaderProgram, "u_cameraPositionPoint");
+            u_normal = glGetUniformLocation(shaderProgram, "u_normal");
+            u_world = glGetUniformLocation(shaderProgram, "u_world");
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
-            u_tex = glGetUniformLocation(shaderProgram, "u_tex");
+            glUniformMatrix3fv(u_normal, 1, GL_FALSE, ToFloat9(normal).v);
+            glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            glUniform1i(u_tex, 0);
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, backgroundTexture);
+            glUniform3fv(u_cameraPositionPoint, 1, &cameraPos.x);
             DrawMesh(sphereMesh);
 
             break;
@@ -577,15 +631,46 @@ int main(void)
         case 2:
             shaderProgram = shaderSkybox;
             glUseProgram(shaderProgram);
-            view = MatrixIdentity();
-            mvp = world * view * proj;
+            Matrix viewSky = view;
+            viewSky.m12 = viewSky.m13 = viewSky.m14 = 0.0f;
+            mvp = world * viewSky * proj;
             u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
-            u_cubemap = glGetUniformLocation(shaderProgram, "u_cubemap");
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
-            glUniform1i(u_cubemap, 0);
-            glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_CUBE_MAP, skyBoxTexture);
+            glDepthMask(GL_FALSE);
             DrawMesh(cubeMesh);
+            glDepthMask(GL_TRUE);
+
+            shaderProgram = shaderReflect;
+            glUseProgram(shaderProgram);
+            world = Translate(-1.0f, 0.0f, -2.0f);
+            mvp = world * viewSky * proj;
+            normal = Transpose(Invert(world));
+            u_cameraPositionPoint = glGetUniformLocation(shaderProgram, "u_cameraPositionPoint");
+            u_normal = glGetUniformLocation(shaderProgram, "u_normal");
+            u_world = glGetUniformLocation(shaderProgram, "u_world");
+            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
+            glUniformMatrix3fv(u_normal, 1, GL_FALSE, ToFloat9(normal).v);
+            glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
+            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
+            glUniform3fv(u_cameraPositionPoint, 1, &cameraPos.x);
+            DrawMesh(cubeMesh);
+
+            shaderProgram = shaderRefract;
+            glUseProgram(shaderProgram);
+            world = Translate(1.0f, 0.0f, -2.0f);
+            mvp = world * viewSky * proj;
+            normal = Transpose(Invert(world));
+            u_cameraPositionPoint = glGetUniformLocation(shaderProgram, "u_cameraPositionPoint");
+            u_normal = glGetUniformLocation(shaderProgram, "u_normal");
+            u_world = glGetUniformLocation(shaderProgram, "u_world");
+            u_mvp = glGetUniformLocation(shaderProgram, "u_mvp");
+            glUniformMatrix3fv(u_normal, 1, GL_FALSE, ToFloat9(normal).v);
+            glUniformMatrix4fv(u_world, 1, GL_FALSE, ToFloat16(world).v);
+            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
+            glUniform3fv(u_cameraPositionPoint, 1, &cameraPos.x);
+            DrawMesh(cubeMesh);
+
             break;
 
         case 3:
@@ -633,7 +718,7 @@ int main(void)
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, ToFloat16(mvp).v);
             glUniform3fv(u_color, 1, &lightColor.x);
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            DrawMesh(sphereMesh); // Draw directional light source
+            DrawMesh(sphereMesh); // Draw spot light source
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
             shaderProgram = shaderTextureWithPhong;
@@ -650,7 +735,7 @@ int main(void)
             u_lightColorPoint = glGetUniformLocation(shaderProgram, "u_lightColor");
             u_lightRadiusPoint = glGetUniformLocation(shaderProgram, "u_lightRadius");
             u_lightPositionDir = glGetUniformLocation(shaderProgram, "u_lightPositionDir");
-            u_cameraPositionSpot = glGetUniformLocation(shaderProgram, "u_cameraPositionSpot");
+            //u_cameraPositionSpot = glGetUniformLocation(shaderProgram, "u_cameraPositionSpot");
             u_lightPositionSpot = glGetUniformLocation(shaderProgram, "u_lightPositionSpot");
             u_lightColorSpot = glGetUniformLocation(shaderProgram, "u_lightColorSpot");
             u_lightRadiusSpot = glGetUniformLocation(shaderProgram, "u_lightRadiusSpot");
@@ -666,7 +751,7 @@ int main(void)
             glUniform3fv(u_lightPositionSpot, 1, &cameraPos.x);
             glUniform3fv(u_lightPositionSpot, 1, &lightPositionSpot.x);
             glUniform3fv(u_lightColorSpot, 1, &lightColorSpot.x);
-            glUniform3fv(u_lightDirSpot, 1, &lightDirSpot.x);
+            glUniform3fv(u_lightDirSpot, 1, &lightDirInvertedSpot.x);
             glUniform1f(u_lightRadiusSpot, u_lightRadiusSpot);
             glUniform1i(u_tex, 0);
             glActiveTexture(GL_TEXTURE0);
@@ -721,7 +806,8 @@ int main(void)
             ImGui::SliderFloat3("Orbit Light Position", &lightPositionOrbit.x, -10.0f, 10.0f);
             ImGui::SliderFloat("Orbit Light Radius", &lightRadius, 0.25f, 100.0f);
             ImGui::SliderFloat3("Spot Light Position", &lightPositionSpot.x, -10.0f, 10.0f);
-            ImGui::SliderFloat("Spot Light Radius", &lightRadiusSpot, 0.25f, 10.0f);
+            ImGui::SliderFloat("Spot Light Radius", &lightRadiusSpot, 0.25f, 20.0f);
+            ImGui::SliderFloat("Refraction Index", &refractiveIndex, 0.5f, 5.0f);
 
             ImGui::RadioButton("Orthographic", (int*)&projection, 0); ImGui::SameLine();
             ImGui::RadioButton("Perspective", (int*)&projection, 1);

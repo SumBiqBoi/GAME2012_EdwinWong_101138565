@@ -111,6 +111,7 @@
     <None Include="assets\shaders\normal_color.frag" />
     <None Include="assets\shaders\phong.frag" />
     <None Include="assets\shaders\reflect.frag" />
+    <None Include="assets\shaders\reflect.vert" />
     <None Include="assets\shaders\refract.frag" />
     <None Include="assets\shaders\skybox.frag" />
     <None Include="assets\shaders\skybox.vert" />

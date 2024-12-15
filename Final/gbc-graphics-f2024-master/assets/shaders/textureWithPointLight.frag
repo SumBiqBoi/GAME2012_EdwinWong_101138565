@@ -13,8 +13,15 @@ uniform vec3 u_lightPositionPoint;
 uniform vec3 u_lightColorPoint;
 uniform float u_lightRadiusPoint;
 
+uniform vec3 u_lightPositionSpot;
+uniform vec3 u_lightColorSpot;
+uniform vec3 u_lightDirSpot;
+uniform float u_lightRadiusSpot;
+
 void main()
 {
+ 
+
     // Point Light
     vec3 N = normalize(normal);
     vec3 L = normalize(u_lightPositionPoint - position);
@@ -36,5 +43,23 @@ void main()
     lighting += specular;
     lighting *= attenuation;
 
-    FragColor = vec4(lighting * texture(u_tex, tcoord).rgb, 1.0);
+    // Spot Light
+    vec3 LSpot = normalize(u_lightPositionSpot - position);
+    vec3 spotDir = normalize(-u_lightDirSpot);
+    float theta = dot(LSpot, spotDir);
+
+    float inCutoff = cos(radians(u_lightRadiusSpot / 2.0));
+    float outCutoff = cos(radians((u_lightRadiusSpot / 2.0) + 0.5));
+    float epsilon = inCutoff - outCutoff;
+
+    float intensity = clamp((theta - outCutoff) / epsilon, 0.0, 1.0);
+
+    vec3 lightingSpot = vec3(0.0);
+    vec3 ambientSpot = u_lightColorSpot * 0.3;
+
+    lightingSpot += ambientSpot;
+    lightingSpot *= intensity;
+
+    vec3 result = lighting + lightingSpot;
+    FragColor = vec4(result * texture(u_tex, tcoord).rgb, 1.0);
 }

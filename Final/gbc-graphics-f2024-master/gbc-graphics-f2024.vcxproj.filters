@@ -142,5 +142,8 @@
     <None Include="assets\shaders\skybox.vert">
       <Filter>shaders</Filter>
     </None>
+    <None Include="assets\shaders\reflect.vert">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
